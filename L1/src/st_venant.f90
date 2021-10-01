@@ -264,7 +264,11 @@ PROGRAM ST_VENANT
     IF (l_coriolis) THEN
         ! Define V_u, v in a u point
         ! Define U_v, u in a v point
-        
+        IF (l_periodic) THEN
+          CALL APPLY_CORIOLIS_EULER_PERIODIC()
+        ELSE
+          CALL APPLY_CORIOLIS_EULER()
+        END IF
 
     END IF
 
@@ -286,7 +290,11 @@ PROGRAM ST_VENANT
     ! ===============
     IF (l_coriolis) THEN
         ! Add Coriolis here
-
+        IF (l_periodic) THEN
+          CALL APPLY_CORIOLIS_EULER_PERIODIC()
+        ELSE
+          CALL APPLY_CORIOLIS_EULER()
+        END IF
     END IF
 
     ! Convergence/divergence
@@ -328,6 +336,11 @@ PROGRAM ST_VENANT
         IF (l_coriolis) THEN
             ! Define V_u, v in a u point
             ! Define U_v, u in a v point
+            IF (l_periodic) THEN
+              CALL APPLY_CORIOLIS_LEAPFROG_PERIODIC()
+            ELSE
+              CALL APPLY_CORIOLIS_LEAPFROG()
+            END IF
         END IF
 
         ! Height gradient
@@ -348,6 +361,11 @@ PROGRAM ST_VENANT
         ! ===============
         IF (l_coriolis) THEN
             ! Add Coriolis here
+            IF (l_periodic) THEN
+              CALL APPLY_CORIOLIS_LEAPFROG_PERIODIC()
+            ELSE
+              CALL APPLY_CORIOLIS_LEAPFROG()
+            END IF
         END IF
 
         ! Convergence/divergence
