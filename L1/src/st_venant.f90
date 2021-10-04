@@ -64,6 +64,7 @@ PROGRAM ST_VENANT
     !!
     LOGICAL :: l_write_uv = .TRUE.         ! should we output U and V? H is always writen!
     LOGICAL :: l_coriolis = .TRUE.         ! should we include coriolis?
+    LOGICAL :: l_stepfunc = .TRUE.         ! Should the initial condition be a guassian?
     LOGICAL :: l_gaussian = .TRUE.         ! Shound the initial condition be a gaussian?
     LOGICAL :: l_solidbc = .TRUE.          ! Should we use solid bc?
     LOGICAL :: l_periodic = .TRUE.         ! Should we use periodic bc?
@@ -95,7 +96,7 @@ PROGRAM ST_VENANT
     !! Defining namelist sections:
     NAMELIST /ngrid/ Nx, Ny, Lx, Ly, Tm_d, rfsave
     NAMELIST /nphysics/ D, l_coriolis, f0
-    NAMELIST /ninitial/ l_gaussian, h0, Lw
+    NAMELIST /ninitial/ l_gaussian, l_stepfunc, h0, Lw
     NAMELIST /nnumerics/ rcfl, gamma
     NAMELIST /nboundaries/ l_write_uv, l_solidbc, l_periodic, l_up, l_vp, l_spongebc, S, btype, l_write_domain, l_alpha
 
@@ -241,17 +242,21 @@ PROGRAM ST_VENANT
     END IF
 
     IF (l_stepfunc) THEN
-        PRINT *, 'Initial condition is set as Guassian'
+        PRINT *, 'Initial condition is set as Step Function'
         !! Gaussian inside:
 
         ! Width of the gaussian
         Lw = min(Lx, Ly)/Lw
-        PRINT *, 'Width of gaussian is set to:', Lw
-        PRINT *, 'Hight of gaussian is set to:', h0
+        PRINT *, 'Width of step function is set to:', Lw
+        PRINT *, 'Hight of step function is set to:', h0
 
         DO jj = 1, Ny
             DO ji = 1, Nx
-                h(ji, jj, 1) = h0*exp(-((vx_t(ji) - 0.5*Lx)/Lw)**2.-((vy_t(jj) - 0.5*Ly)/Lw)**2.)
+              IF (ji < Nx/2) THEN
+                h(ji, jj, 1) = h0
+              ELSE
+                h(ji, jj, 1) = -h0
+              END IF
             END DO
         END DO
     END IF
@@ -282,21 +287,22 @@ PROGRAM ST_VENANT
         ! Define U_v, u in a v point
 
         V_u(1:Nx - 1, 1:Ny) = 0.25*( v_tmp(1:Nx - 1, 1:Ny, -1) + v_tmp(2:Nx, 1:Ny, -1)  &
-                                    + v_tmp(2:Nx, 1:Ny - 1, -1) + v_tmp(1:Nx - 1, 1:Ny - 1, -1) )
+                                    + v_tmp(2:Nx, 0:Ny - 1, -1) + v_tmp(1:Nx - 1, 0:Ny - 1, -1) )
         U_v(1:Nx, 1:Ny - 1) = 0.25*( u_tmp(1:Nx, 1:Ny - 1, -1) + u_tmp(1:Nx, 2:Ny, -1)  &
-                                    + u_tmp(1:Nx - 1, 2:Ny, -1) + u_tmp(1:Nx - 1, 1:Ny - 1, -1) )
+                                    + u_tmp(0:Nx - 1, 2:Ny, -1) + u_tmp(0:Nx - 1, 1:Ny - 1, -1) )
         IF (l_up .and. l_periodic) THEN
           V_u(0, 1:Ny) = 0.25*( v_tmp(0, 1:Ny, -1) + v_tmp(1, 1:Ny, -1) &
-                                + v_tmp(1, 1:Ny - 1, -1) + v_tmp(0, 1:Ny - 1, -1) )
+                                + v_tmp(1, 0:Ny - 1, -1) + v_tmp(0, 0:Ny - 1, -1) )
           V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, -1) + v_tmp(0, 1:Ny, -1)&
-                                + v_tmp(0, 1:Ny - 1, -1) + v_tmp(Nx, 1:Ny - 1, -1) )
+                                + v_tmp(0, 0:Ny - 1, -1) + v_tmp(Nx, 0:Ny - 1, -1) )
           ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
         END IF
+        ! u_tmp(0:Nx, 1:Ny, )
         IF (l_vp .and. l_periodic) THEN
-          U_v(1:Nx, 0) = 0.25*( u_tmp(1:Nx, 0, -1) + u_tmp(1:Nx, 1, -1)&
-                                + u_tmp(1:Nx - 1, 1, -1) + u_tmp(1:Nx - 1, 0, -1) )
-          U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Nx, -1) + u_tmp(1:Nx, 0, -1)&
-                                + u_tmp(1:Nx - 1, 0, -1) + u_tmp(1:Nx, Nx, -1) )
+          U_v(:, 0) = 0.25*( u_tmp(1:, 1, -1) + u_tmp(:, 2, -1)&
+                                + u_tmp(:, 2, -1) + u_tmp(:, 1, -1) )
+          U_v(:, Ny) = 0.25*( u_tmp(:, Ny, -1) + u_tmp(:, 1, -1)&
+                                + u_tmp(:, 1, -1) + u_tmp(:, Ny, -1) )
         END IF
 
     END IF
@@ -364,21 +370,21 @@ PROGRAM ST_VENANT
             ! Define U_v, u in a v point
 
             V_u(1:Nx - 1, 1:Ny) = 0.25*( v_tmp(1:Nx - 1, 1:Ny, 0) + v_tmp(2:Nx, 1:Ny, -0)&
-                                        + v_tmp(2:Nx, 1:Ny - 1, 0) + v_tmp(1:Nx - 1, 1:Ny - 1, 0) )
+                                        + v_tmp(2:Nx, 0:Ny - 1, 0) + v_tmp(1:Nx - 1, 0:Ny - 1, 0) )
             U_v(1:Nx, 1:Ny - 1) = 0.25*( u_tmp(1:Nx, 1:Ny - 1, 0) + u_tmp(1:Nx, 2:Ny, 0)&
-                                        + u_tmp(1:Nx - 1, 2:Ny, 0) + u_tmp(1:Nx - 1, 1:Ny - 1, 0) )
+                                        + u_tmp(0:Nx - 1, 2:Ny, 0) + u_tmp(0:Nx - 1, 1:Ny - 1, 0) )
             IF (l_up .and. l_periodic) THEN
               V_u(0, 1:Ny) = 0.25*( v_tmp(0, 1:Ny, 0) + v_tmp(1, 1:Ny, 0)&
-                                    + v_tmp(1, 1:Ny - 1, 0) + v_tmp(0, 1:Ny - 1, 0) )
+                                    + v_tmp(1, 0:Ny - 1, 0) + v_tmp(0, 0:Ny - 1, 0) )
               V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, 0) + v_tmp(0, 1:Ny, 0)&
-                                    + v_tmp(0, 1:Ny - 1, 0) + v_tmp(Nx, 1:Ny - 1, 0) )
+                                    + v_tmp(0, 0:Ny - 1, 0) + v_tmp(Nx, 0:Ny - 1, 0) )
               ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
             END IF
             IF (l_vp .and. l_periodic) THEN
-              U_v(1:Nx, 0) = 0.25*( u_tmp(1:Nx, 0, 0) + u_tmp(1:Nx, 1, 0)&
-                                    + u_tmp(1:Nx - 1, 1, 0) + u_tmp(1:Nx - 1, 0, 0) )
-              U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Nx, 0) + u_tmp(1:Nx, 0, 0)&
-                                    + u_tmp(1:Nx - 1, 0, 0) + u_tmp(1:Nx, Nx, 0) )
+              U_v(:, 0) = 0.25*( u_tmp(:, 1, 0) + u_tmp(:, 2, 0)&
+                                    + u_tmp(:, 2, 0) + u_tmp(:, 1, 0) )
+              U_v(:, Ny) = 0.25*( u_tmp(:, Ny, 0) + u_tmp(:, 1, 0)&
+                                    + u_tmp(:, 1, 0) + u_tmp(:, Ny, 0) )
             END IF
         END IF
 
