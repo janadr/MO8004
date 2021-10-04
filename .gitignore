@@ -3,3 +3,4 @@
 *.nc
 *.mod
 *.x
+*-checkpoint.ipynb

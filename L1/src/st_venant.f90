@@ -197,7 +197,7 @@ PROGRAM ST_VENANT
     !! Allocating arrays:
     ALLOCATE (h(Nx, Ny, nb_save), vx_u(0:Nx), vy_v(0:Ny), vx_t(Nx), vy_t(Ny), &
          &     vtime(nb_save), u_tmp(0:Nx, Ny, -1:1), v_tmp(Nx, 0:Ny, -1:1), h_tmp(Nx, Ny, -1:1),   &
-         &     Xdu(0:Nx, Ny), Xdv(Nx, 0:Ny), Xdh(Nx, Ny),    &
+         &     Xdu(0:Nx, 1:Ny), Xdv(1:Nx, 0:Ny), Xdh(Nx, Ny),    &
          &     U_t(Nx, Ny), V_t(Nx, Ny), U_v(1:Nx, 0:Ny), V_u(0:Nx, 1:Ny))
 
     IF (l_write_uv) ALLOCATE (u(0:Nx, Ny, nb_save), v(Nx, 0:Ny, nb_save))
@@ -240,6 +240,22 @@ PROGRAM ST_VENANT
         END DO
     END IF
 
+    IF (l_stepfunc) THEN
+        PRINT *, 'Initial condition is set as Guassian'
+        !! Gaussian inside:
+
+        ! Width of the gaussian
+        Lw = min(Lx, Ly)/Lw
+        PRINT *, 'Width of gaussian is set to:', Lw
+        PRINT *, 'Hight of gaussian is set to:', h0
+
+        DO jj = 1, Ny
+            DO ji = 1, Nx
+                h(ji, jj, 1) = h0*exp(-((vx_t(ji) - 0.5*Lx)/Lw)**2.-((vy_t(jj) - 0.5*Ly)/Lw)**2.)
+            END DO
+        END DO
+    END IF
+
     ! Saving initial condition:
     CALL WRITE_NC_2D(vx_t, vy_t, h(:, :, 1), 'H_init_cond.nc', 'h0')
 
@@ -264,10 +280,23 @@ PROGRAM ST_VENANT
     IF (l_coriolis) THEN
         ! Define V_u, v in a u point
         ! Define U_v, u in a v point
-        IF (l_periodic) THEN
-          CALL APPLY_CORIOLIS_EULER_PERIODIC()
-        ELSE
-          CALL APPLY_CORIOLIS_EULER()
+
+        V_u(1:Nx - 1, 1:Ny) = 0.25*( v_tmp(1:Nx - 1, 1:Ny, -1) + v_tmp(2:Nx, 1:Ny, -1)  &
+                                    + v_tmp(2:Nx, 1:Ny - 1, -1) + v_tmp(1:Nx - 1, 1:Ny - 1, -1) )
+        U_v(1:Nx, 1:Ny - 1) = 0.25*( u_tmp(1:Nx, 1:Ny - 1, -1) + u_tmp(1:Nx, 2:Ny, -1)  &
+                                    + u_tmp(1:Nx - 1, 2:Ny, -1) + u_tmp(1:Nx - 1, 1:Ny - 1, -1) )
+        IF (l_up .and. l_periodic) THEN
+          V_u(0, 1:Ny) = 0.25*( v_tmp(0, 1:Ny, -1) + v_tmp(1, 1:Ny, -1) &
+                                + v_tmp(1, 1:Ny - 1, -1) + v_tmp(0, 1:Ny - 1, -1) )
+          V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, -1) + v_tmp(0, 1:Ny, -1)&
+                                + v_tmp(0, 1:Ny - 1, -1) + v_tmp(Nx, 1:Ny - 1, -1) )
+          ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
+        END IF
+        IF (l_vp .and. l_periodic) THEN
+          U_v(1:Nx, 0) = 0.25*( u_tmp(1:Nx, 0, -1) + u_tmp(1:Nx, 1, -1)&
+                                + u_tmp(1:Nx - 1, 1, -1) + u_tmp(1:Nx - 1, 0, -1) )
+          U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Nx, -1) + u_tmp(1:Nx, 0, -1)&
+                                + u_tmp(1:Nx - 1, 0, -1) + u_tmp(1:Nx, Nx, -1) )
         END IF
 
     END IF
@@ -290,11 +319,8 @@ PROGRAM ST_VENANT
     ! ===============
     IF (l_coriolis) THEN
         ! Add Coriolis here
-        IF (l_periodic) THEN
-          CALL APPLY_CORIOLIS_EULER_PERIODIC()
-        ELSE
-          CALL APPLY_CORIOLIS_EULER()
-        END IF
+        Xdu = Xdu + f0/dx*V_u
+        Xdv = Xdv + f0/dy*U_v
     END IF
 
     ! Convergence/divergence
@@ -336,10 +362,23 @@ PROGRAM ST_VENANT
         IF (l_coriolis) THEN
             ! Define V_u, v in a u point
             ! Define U_v, u in a v point
-            IF (l_periodic) THEN
-              CALL APPLY_CORIOLIS_LEAPFROG_PERIODIC()
-            ELSE
-              CALL APPLY_CORIOLIS_LEAPFROG()
+
+            V_u(1:Nx - 1, 1:Ny) = 0.25*( v_tmp(1:Nx - 1, 1:Ny, 0) + v_tmp(2:Nx, 1:Ny, -0)&
+                                        + v_tmp(2:Nx, 1:Ny - 1, 0) + v_tmp(1:Nx - 1, 1:Ny - 1, 0) )
+            U_v(1:Nx, 1:Ny - 1) = 0.25*( u_tmp(1:Nx, 1:Ny - 1, 0) + u_tmp(1:Nx, 2:Ny, 0)&
+                                        + u_tmp(1:Nx - 1, 2:Ny, 0) + u_tmp(1:Nx - 1, 1:Ny - 1, 0) )
+            IF (l_up .and. l_periodic) THEN
+              V_u(0, 1:Ny) = 0.25*( v_tmp(0, 1:Ny, 0) + v_tmp(1, 1:Ny, 0)&
+                                    + v_tmp(1, 1:Ny - 1, 0) + v_tmp(0, 1:Ny - 1, 0) )
+              V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, 0) + v_tmp(0, 1:Ny, 0)&
+                                    + v_tmp(0, 1:Ny - 1, 0) + v_tmp(Nx, 1:Ny - 1, 0) )
+              ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
+            END IF
+            IF (l_vp .and. l_periodic) THEN
+              U_v(1:Nx, 0) = 0.25*( u_tmp(1:Nx, 0, 0) + u_tmp(1:Nx, 1, 0)&
+                                    + u_tmp(1:Nx - 1, 1, 0) + u_tmp(1:Nx - 1, 0, 0) )
+              U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Nx, 0) + u_tmp(1:Nx, 0, 0)&
+                                    + u_tmp(1:Nx - 1, 0, 0) + u_tmp(1:Nx, Nx, 0) )
             END IF
         END IF
 
@@ -361,11 +400,8 @@ PROGRAM ST_VENANT
         ! ===============
         IF (l_coriolis) THEN
             ! Add Coriolis here
-            IF (l_periodic) THEN
-              CALL APPLY_CORIOLIS_LEAPFROG_PERIODIC()
-            ELSE
-              CALL APPLY_CORIOLIS_LEAPFROG()
-            END IF
+            Xdu = Xdu + f0/dx*V_u
+            Xdv = Xdv + f0/dy*U_v
         END IF
 
         ! Convergence/divergence
