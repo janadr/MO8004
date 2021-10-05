@@ -288,21 +288,22 @@ PROGRAM ST_VENANT
 
         V_u(1:Nx - 1, 1:Ny) = 0.25*( v_tmp(1:Nx - 1, 1:Ny, -1) + v_tmp(2:Nx, 1:Ny, -1)  &
                                     + v_tmp(2:Nx, 0:Ny - 1, -1) + v_tmp(1:Nx - 1, 0:Ny - 1, -1) )
-        U_v(1:Nx, 1:Ny - 1) = 0.25*( u_tmp(1:Nx, 1:Ny - 1, -1) + u_tmp(1:Nx, 2:Ny, -1)  &
-                                    + u_tmp(0:Nx - 1, 2:Ny, -1) + u_tmp(0:Nx - 1, 1:Ny - 1, -1) )
+        U_v(1:Nx, 1:Ny - 1) = 0.25*( u_tmp(1:Nx, 1:Ny - 1, -1) + u_tmp(1:Nx, 2:Ny, -1) &
+                                    +  u_tmp(0:Nx - 1, 2:Ny, -1) + u_tmp(0:Nx - 1, 1:Ny - 1, -1) )
         IF (l_up .and. l_periodic) THEN
-          V_u(0, 1:Ny) = 0.25*( v_tmp(0, 1:Ny, -1) + v_tmp(1, 1:Ny, -1) &
-                                + v_tmp(1, 0:Ny - 1, -1) + v_tmp(0, 0:Ny - 1, -1) )
-          V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, -1) + v_tmp(0, 1:Ny, -1)&
-                                + v_tmp(0, 0:Ny - 1, -1) + v_tmp(Nx, 0:Ny - 1, -1) )
+          V_u(0, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, -1) + v_tmp(2, 1:Ny, -1) &
+                                + v_tmp(2, 0:Ny - 1, -1) + v_tmp(1, 0:Ny - 1, -1) )
+          V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, -1) + v_tmp(1, 1:Ny, -1)&
+                                + v_tmp(1, 0:Ny - 1, -1) + v_tmp(Nx, 0:Ny - 1, -1) )
           ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
         END IF
         ! u_tmp(0:Nx, 1:Ny, )
+        ! U_v(1:Nx, 0:Ny)
         IF (l_vp .and. l_periodic) THEN
-          U_v(:, 0) = 0.25*( u_tmp(1:, 1, -1) + u_tmp(:, 2, -1)&
-                                + u_tmp(:, 2, -1) + u_tmp(:, 1, -1) )
-          U_v(:, Ny) = 0.25*( u_tmp(:, Ny, -1) + u_tmp(:, 1, -1)&
-                                + u_tmp(:, 1, -1) + u_tmp(:, Ny, -1) )
+          U_v(1:Nx, 0) = 0.25*( u_tmp(1:Nx, Ny, -1) + u_tmp(1:Nx, 2, -1)&
+                              + u_tmp(0:Nx - 1, 2, -1) + u_tmp(0:Nx - 1, 1, -1) )
+          U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Ny, -1) + u_tmp(1:Nx, 1, -1)&
+                                + u_tmp(0:Nx - 1, 1, -1) + u_tmp(0:Nx - 1, Ny, -1))
         END IF
 
     END IF
@@ -317,8 +318,8 @@ PROGRAM ST_VENANT
         Xdu(Nx, :) = Xdu(Nx, :) - g/dx*(h_tmp(1, :, -1) - h_tmp(Nx, :, -1))
     END IF
     IF (l_vp .and. l_periodic) THEN
-        Xdv(:, 0) = Xdv(:, 0) - g/dx*(h_tmp(:, 1, -1) - h_tmp(:, Ny, -1))
-        Xdv(:, Ny) = Xdv(:, Ny) - g/dx*(h_tmp(:, 1, -1) - h_tmp(:, Ny, -1))
+        Xdv(:, 0) = Xdv(:, 0) - g/dy*(h_tmp(:, 1, -1) - h_tmp(:, Ny, -1))
+        Xdv(:, Ny) = Xdv(:, Ny) - g/dy*(h_tmp(:, 1, -1) - h_tmp(:, Ny, -1))
     END IF
 
     ! Adding Coriolis
@@ -326,7 +327,7 @@ PROGRAM ST_VENANT
     IF (l_coriolis) THEN
         ! Add Coriolis here
         Xdu = Xdu + f0/dx*V_u
-        Xdv = Xdv + f0/dy*U_v
+        Xdv = Xdv - f0/dy*U_v
     END IF
 
     ! Convergence/divergence
@@ -369,22 +370,22 @@ PROGRAM ST_VENANT
             ! Define V_u, v in a u point
             ! Define U_v, u in a v point
 
-            V_u(1:Nx - 1, 1:Ny) = 0.25*( v_tmp(1:Nx - 1, 1:Ny, 0) + v_tmp(2:Nx, 1:Ny, -0)&
+            V_u(1:Nx - 1, 1:Ny) = 0.25*( v_tmp(1:Nx - 1, 1:Ny, 0) + v_tmp(2:Nx, 1:Ny, 0)  &
                                         + v_tmp(2:Nx, 0:Ny - 1, 0) + v_tmp(1:Nx - 1, 0:Ny - 1, 0) )
-            U_v(1:Nx, 1:Ny - 1) = 0.25*( u_tmp(1:Nx, 1:Ny - 1, 0) + u_tmp(1:Nx, 2:Ny, 0)&
-                                        + u_tmp(0:Nx - 1, 2:Ny, 0) + u_tmp(0:Nx - 1, 1:Ny - 1, 0) )
+            U_v(1:Nx, 1:Ny - 1) = 0.25*( u_tmp(1:Nx, 1:Ny - 1, 0) + u_tmp(1:Nx, 2:Ny, 0) &
+                                        +  u_tmp(0:Nx - 1, 2:Ny, 0) + u_tmp(0:Nx - 1, 1:Ny - 1, 0) )
             IF (l_up .and. l_periodic) THEN
-              V_u(0, 1:Ny) = 0.25*( v_tmp(0, 1:Ny, 0) + v_tmp(1, 1:Ny, 0)&
-                                    + v_tmp(1, 0:Ny - 1, 0) + v_tmp(0, 0:Ny - 1, 0) )
-              V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, 0) + v_tmp(0, 1:Ny, 0)&
-                                    + v_tmp(0, 0:Ny - 1, 0) + v_tmp(Nx, 0:Ny - 1, 0) )
+              V_u(0, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, 0) + v_tmp(2, 1:Ny, 0) &
+                                    + v_tmp(2, 0:Ny - 1, 0) + v_tmp(1, 0:Ny - 1, 0) )
+              V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, 0) + v_tmp(1, 1:Ny, 0)&
+                                    + v_tmp(1, 0:Ny - 1, 0) + v_tmp(Nx, 0:Ny - 1, 0) )
               ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
             END IF
             IF (l_vp .and. l_periodic) THEN
-              U_v(:, 0) = 0.25*( u_tmp(:, 1, 0) + u_tmp(:, 2, 0)&
-                                    + u_tmp(:, 2, 0) + u_tmp(:, 1, 0) )
-              U_v(:, Ny) = 0.25*( u_tmp(:, Ny, 0) + u_tmp(:, 1, 0)&
-                                    + u_tmp(:, 1, 0) + u_tmp(:, Ny, 0) )
+              U_v(1:Nx, 0) = 0.25*( u_tmp(1:Nx, Ny, 0) + u_tmp(1:Nx, 2, 0)&
+                                  + u_tmp(0:Nx - 1, 2, 0) + u_tmp(0:Nx - 1, 1, 0) )
+              U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Ny, 0) + u_tmp(1:Nx, 1, 0)&
+                                    + u_tmp(0:Nx - 1, 1, 0) + u_tmp(0:Nx - 1, Ny, 0))
             END IF
         END IF
 
@@ -398,8 +399,8 @@ PROGRAM ST_VENANT
             Xdu(Nx, :) = Xdu(Nx, :) - g/dx*(h_tmp(1, :, 0) - h_tmp(Nx, :, 0))
         END IF
         IF (l_vp .and. l_periodic) THEN
-            Xdv(:, 0) = Xdv(:, 0) - g/dx*(h_tmp(:, 1, 0) - h_tmp(:, Ny, 0))
-            Xdv(:, Ny) = Xdv(:, Ny) - g/dx*(h_tmp(:, 1, 0) - h_tmp(:, Ny, 0))
+            Xdv(:, 0) = Xdv(:, 0) - g/dy*(h_tmp(:, 1, 0) - h_tmp(:, Ny, 0))
+            Xdv(:, Ny) = Xdv(:, Ny) - g/dy*(h_tmp(:, 1, 0) - h_tmp(:, Ny, 0))
         END IF
 
         ! Adding Coriolis
@@ -407,7 +408,7 @@ PROGRAM ST_VENANT
         IF (l_coriolis) THEN
             ! Add Coriolis here
             Xdu = Xdu + f0/dx*V_u
-            Xdv = Xdv + f0/dy*U_v
+            Xdv = Xdv - f0/dy*U_v
         END IF
 
         ! Convergence/divergence
