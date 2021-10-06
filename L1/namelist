@@ -2,7 +2,7 @@
   !!
   Nx = 200              ! Number of x T points
   Ny = 200              ! Number of y T points
-  Lx =  2.5E7            ! Width of domain in x (m)  1.e6 = 1000 km
+  Lx =  9.E6            ! Width of domain in x (m)  1.e6 = 1000 km
   Ly =  4.5E6    	      ! Width of domain in y (m)  1.e6 = 1000 km
   Tm_d = 40.             ! Length of the run in days
   rfsave = 6         ! Frequency at which to save fields in hours.
@@ -21,7 +21,7 @@
   !!
   l_gaussian = .FALSE.	  ! Initial condition set as gaussian.
   l_stepfunc = .TRUE.   ! Initial condition set as step function
-  h0 = 5.               ! Amplitude of the perturbation
+  h0 = 0.5               ! Amplitude of the perturbation
   Lw = 20.              ! Width of the gaussian L = Lw*width
 /
 

@@ -1,6 +1,13 @@
 
 # data files
 *.nc
+*.pyc
 *.mod
 *.x
 *-checkpoint.ipynb
+*.log
+*.gz
+*.blg
+*.bbl
+*.aux
+*.out

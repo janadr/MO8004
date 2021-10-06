@@ -35,7 +35,8 @@ PROGRAM ST_VENANT
     IMPLICIT none
 
     REAL, PARAMETER :: &
-                       &  g = 9.81           ! gravity acceleration        [m s^-2]
+        & g = 9.81, &  ! gravity acceleration        [m s^-2]
+        & rho = 1027  ! Density sea water [kg/m3]
 
     !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     !! Parameters which are given a value in the namelist:
@@ -73,6 +74,7 @@ PROGRAM ST_VENANT
     LOGICAL :: l_spongebc = .TRUE.         ! Should we use a sponge bc?
     LOGICAL :: l_write_domain = .TRUE.     ! Should we save the fields with the sponge?
     LOGICAL :: l_alpha = .TRUE.            ! Should we output alpha_u and alpha_v?
+    LOGICAL :: l_energy = .TRUE.           ! should we output energy?
     !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     LOGICAL :: lexist
@@ -87,7 +89,7 @@ PROGRAM ST_VENANT
     !
     REAL, DIMENSION(:, :), ALLOCATABLE :: Xdu, Xdv, Xdh, U_t, V_t, U_v, V_u, alpha_u, alpha_v ! lolo
     !!
-    REAL, DIMENSION(:), ALLOCATABLE :: vx_t, vy_t, vx_u, vy_v, vtime
+    REAL, DIMENSION(:), ALLOCATABLE :: vx_t, vy_t, vx_u, vy_v, vtime, ek, ep, et
 
     !! Indices for loops
     INTEGER :: nt, nt_save, jt_save = 1, ji, jj, jf, jt, jc, nb_save, sx, sy
@@ -199,7 +201,8 @@ PROGRAM ST_VENANT
     ALLOCATE (h(Nx, Ny, nb_save), vx_u(0:Nx), vy_v(0:Ny), vx_t(Nx), vy_t(Ny), &
          &     vtime(nb_save), u_tmp(0:Nx, Ny, -1:1), v_tmp(Nx, 0:Ny, -1:1), h_tmp(Nx, Ny, -1:1),   &
          &     Xdu(0:Nx, 1:Ny), Xdv(1:Nx, 0:Ny), Xdh(Nx, Ny),    &
-         &     U_t(Nx, Ny), V_t(Nx, Ny), U_v(1:Nx, 0:Ny), V_u(0:Nx, 1:Ny))
+         &     U_t(Nx, Ny), V_t(Nx, Ny), U_v(1:Nx, 0:Ny), V_u(0:Nx, 1:Ny), &
+         &     ep(nb_save), ek(nb_save), et(nb_save))
 
     IF (l_write_uv) ALLOCATE (u(0:Nx, Ny, nb_save), v(Nx, 0:Ny, nb_save))
 
@@ -239,30 +242,14 @@ PROGRAM ST_VENANT
                 h(ji, jj, 1) = h0*exp(-((vx_t(ji) - 0.5*Lx)/Lw)**2.-((vy_t(jj) - 0.5*Ly)/Lw)**2.)
             END DO
         END DO
-    END IF
-
-    IF (l_stepfunc) THEN
+    ELSE IF (l_stepfunc) THEN
         PRINT *, 'Initial condition is set as Step Function'
-        !! Gaussian inside:
-
-        ! Width of the gaussian
-        Lw = min(Lx, Ly)/Lw
-        PRINT *, 'Width of step function is set to:', Lw
-        PRINT *, 'Hight of step function is set to:', h0
-
-        DO jj = 1, Ny
-            DO ji = 1, Nx
-              IF (ji < Nx/2) THEN
-                h(ji, jj, 1) = h0
-              ELSE
-                h(ji, jj, 1) = -h0
-              END IF
-            END DO
-        END DO
+        h(1:Nx/2, :, 1) = h0
+        h(Nx/2 + 1:Nx, :, 1) = -h0
     END IF
 
     ! Saving initial condition:
-    CALL WRITE_NC_2D(vx_t, vy_t, h(:, :, 1), 'H_init_cond.nc', 'h0')
+    CALL WRITE_NC_2D(vx_t, vy_t, h(:, :, 1), 'data/H_init_cond.nc', 'h0')
 
     h_tmp(:, :, -1) = h(:, :, 1)
 
@@ -285,6 +272,7 @@ PROGRAM ST_VENANT
     IF (l_coriolis) THEN
         ! Define V_u, v in a u point
         ! Define U_v, u in a v point
+
 
         V_u(1:Nx - 1, 1:Ny) = 0.25*( v_tmp(1:Nx - 1, 1:Ny, -1) + v_tmp(2:Nx, 1:Ny, -1)  &
                                     + v_tmp(2:Nx, 0:Ny - 1, -1) + v_tmp(1:Nx - 1, 0:Ny - 1, -1) )
@@ -326,8 +314,8 @@ PROGRAM ST_VENANT
     ! ===============
     IF (l_coriolis) THEN
         ! Add Coriolis here
-        Xdu = Xdu + f0/dx*V_u
-        Xdv = Xdv - f0/dy*U_v
+        Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
+        Xdv = Xdv - f0*U_v(:, :)
     END IF
 
     ! Convergence/divergence
@@ -407,8 +395,8 @@ PROGRAM ST_VENANT
         ! ===============
         IF (l_coriolis) THEN
             ! Add Coriolis here
-            Xdu = Xdu + f0/dx*V_u
-            Xdv = Xdv - f0/dy*U_v
+            Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
+            Xdv(:, :) = Xdv(:, :) - f0*U_v(:, :)
         END IF
 
         ! Convergence/divergence
@@ -469,6 +457,10 @@ PROGRAM ST_VENANT
     ! Write data to files
     !====================
 
+    IF (l_energy) THEN
+        CALL COMPUTE_ENERGY()
+    END IF
+
     ! Choose to write the whole domain (when using a sponge bc) or only the fields.
     IF (l_write_domain .and. l_spongebc) THEN
 
@@ -479,20 +471,23 @@ PROGRAM ST_VENANT
             sy = S/2
         END IF
 
-        CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, h(1 + sx:Nx - sx, 1 + sy:Ny - sy, :), 'h_test.nc', 'h')
+        CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, h(1 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
+                      'data/h_test.nc', 'h')
 
         IF (l_write_uv) THEN
-            CALL WRITE_NC(vx_u(0 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, u(0 + sx:Nx - sx, 1 + sy:Ny - sy, :), 'u_test.nc', 'u')
-            CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_v(0 + sy:Ny - sy), vtime, v(1 + sx:Nx - sx, 0 + sy:Ny - sy, :), 'v_test.nc', 'v')
+            CALL WRITE_NC(vx_u(0 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, u(0 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
+                        'data/u_test.nc', 'u')
+            CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_v(0 + sy:Ny - sy), vtime, v(1 + sx:Nx - sx, 0 + sy:Ny - sy, :), &
+                        'data/v_test.nc', 'v')
         END IF
 
     ELSE
 
-        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'h_test.nc', 'h')
+        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_test.nc', 'h')
 
         IF (l_write_uv) THEN
-            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'u_test.nc', 'u')
-            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'v_test.nc', 'v')
+            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_test.nc', 'u')
+            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_test.nc', 'v')
         END IF
 
     END IF
@@ -569,8 +564,8 @@ CONTAINS
 
         IF (l_alpha) THEN
             ! Write alpha_u and alpha_v
-            CALL WRITE_NC_2D(vx_u(0:Nx), vy_t(1:Ny), REAL(alpha_u(0:Nx, 1:Ny), 4), 'alpha_u.nc', 'alpha_u')
-            CALL WRITE_NC_2D(vx_t(1:Nx), vy_v(0:Ny), REAL(alpha_v(1:Nx, 0:Ny), 4), 'alpha_v.nc', 'alpha_v')
+            CALL WRITE_NC_2D(vx_u(0:Nx), vy_t(1:Ny), REAL(alpha_u(0:Nx, 1:Ny), 4), 'data/alpha_u.nc', 'alpha_u')
+            CALL WRITE_NC_2D(vx_t(1:Nx), vy_v(0:Ny), REAL(alpha_v(1:Nx, 0:Ny), 4), 'data/alpha_v.nc', 'alpha_v')
         END IF
 
     END SUBROUTINE SPONGE_BC
@@ -609,5 +604,30 @@ CONTAINS
         END IF
 
     END SUBROUTINE APPLY_PERIODIC_BC
+
+    SUBROUTINE COMPUTE_ENERGY()
+
+        IF (btype == 2 .or. btype == 0) THEN
+            sx = S/2
+        END IF
+        IF (btype == 1 .or. btype == 0) THEN
+            sy = S/2
+        END IF
+
+        ep = 0.5*rho*g*sum(sum(h(1 + sx:Nx - sx, 1 + sy:Ny - sy, :)**2, 1), 1)*dx*dy
+        ek = 0.5*rho*D*sum(sum(0.5*u(1 + sx:Nx - sx, 1 + sy:Ny - sy, :)**2. &
+                               +0.5*u(0 + sx:Nx - 1 - sx, 1 + sy:Ny - sy, :)**2., 1), 1)*dx*dy &
+             + 0.5*rho*D*sum(sum(0.5*v(1 + sx:Nx - sx, 1 + sy:Ny - sy, :)**2. &
+                                 +0.5*v(1 + sx:Nx - sx, 0 + sy:Ny - 1 - sy, :)**2., 1), 1)*dx*dy
+
+        et = ep + ek
+
+        OPEN (11, file='data/energy.dat', status='replace')
+        DO jt = 1, nb_save
+            WRITE (11, *) jt, ep(jt), ek(jt), et(jt)
+        END DO
+        CLOSE (11)
+
+    END SUBROUTINE COMPUTE_ENERGY
 
 END PROGRAM ST_VENANT
