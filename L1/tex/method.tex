@@ -1,3 +1,29 @@
 \section{Method}
 \label{sec:method}
+The shallow water equations (eqs. \ref{eq:dudt}, \ref{eq:dvdt}, \ref{eq:dhdt}) are solved numerically in the FORTRAN programming language using finite difference schemes. An Arakawa C-grid is used for representing spatial coordinates, while the temporal integration is calculated using the leapfrog scheme. Discretization then yields
+	\begin{align}
+		u^{n+1}_{i,j} &= u^{n-1}_{i,j} + 2\Delta t \qty(-g\frac{h^n_{i+1,j} - h^n_{i,j}}{\Delta x}) \nonumber \\
+		&+ \frac{f_0}{4}\qty(v^n_{i,j} + v^n_{i+1,j} + v^n_{i+1,j-1} + v^n_{i,j-1}),
+	\label{eq:u_discrete}
+	\end{align}
+	\begin{align}
+		v^{n+1}_{i,j} &= v^{n-1}_{i,j} + 2\Delta t \qty(-g\frac{h^n_{i,j+1} - h^n_{i,j}}{\Delta y}) \nonumber \\
+		&- \frac{f_0}{4}\qty(u^n_{i,j} + u^n_{i,j+1} + u^n_{i-1,j+1} + u^n_{i-1,j}),
+	\label{eq:v_discrete}
+	\end{align}
+	\begin{align}
+		h^{n+1}_{i,j} &= h^{n}_{i,j} \nonumber  \\
+		&- 2\Delta t \qty(\frac{u^n_{i,j} - u^n_{i-1,j}}{\Delta x} + \frac{v^n_{i,j} - v^n_{i,j-1}}{\Delta y}).
+	\label{eq:h_discrete}
+	\end{align}
+The energies are calculated as follows
+	\begin{equation}
+		V = \frac{1}{2}\rho g \sum_i \sum_j \qty(h_{i,j})^2 \Delta x \Delta y
+	\label{eq:potential_discrete}
+	\end{equation}
+	\begin{align}
+		K = &\frac{1}{2} \rho \sum_i \sum_j \nonumber \\
+		&\frac{1}{2} \qty(u^2_{i-1,j} + u^2_{i,j} + v^2_{i-1,j} + v^2_{i,j})h_{i,j}.
+	\end{align}
 
+The model and scripts used for analysis are found in a github repository \footnote{https://github.com/janadr/MO8004/tree/master/L1}.
