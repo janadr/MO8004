@@ -1,0 +1,63 @@
+\documentclass[a4paper, 11pt, twocolumn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage[noend]{algorithm2e}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{epsfig,floatflt}
+\usepackage{physics}
+\usepackage[english]{babel}
+\usepackage{booktabs}
+\usepackage[round]{natbib}
+%\usepackage{cite}
+\usepackage[format=plain,
+font=it]{caption}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{color}
+\definecolor{darkred}{rgb}{0.5,0,0}
+\definecolor{darkgreen}{rgb}{0,0.5,0}
+\definecolor{darkblue}{rgb}{0,0,0.5}
+
+
+\hypersetup{ colorlinks,
+	linkcolor=darkblue,
+	filecolor=darkgreen,
+	urlcolor=darkred,
+	citecolor=darkblue }
+
+\graphicspath{{../figures/}}
+\DeclareGraphicsExtensions{.pdf}
+
+\begin{document}
+
+\title{Numerical exploration of solid boundary conditions}
+
+\author{Jan-Adrian Kallmyr}
+
+\twocolumn[
+  \begin{@twocolumnfalse}
+    \maketitle
+%    \input{abstract}
+  \end{@twocolumnfalse}
+]
+
+\input{introduction}
+
+\input{theory}
+
+\input{method}
+
+\input{results}
+
+\input{conclusion}
+
+
+%\bibliographystyle{plainnat}
+
+%\bibliography{ourbib}
+
+
+
+\end{document}

@@ -2,25 +2,26 @@
   !!
   Nx = 200              ! Number of x T points
   Ny = 200              ! Number of y T points
-  Lx =  6.E6            ! Width of domain in x (m)  1.e6 = 1000 km
-  Ly =  6.E6    	      ! Width of domain in y (m)  1.e6 = 1000 km
-  Tm_d = 3.             ! Length of the run in days
-  rfsave = 0.25         ! Frequency at which to save fields in hours.
+  Lx =  9.E6            ! Width of domain in x (m)  1.e6 = 1000 km
+  Ly =  4.5E6    	      ! Width of domain in y (m)  1.e6 = 1000 km
+  Tm_d = 40.             ! Length of the run in days
+  rfsave = 6         ! Frequency at which to save fields in hours.
   !!
 /
 
 &nphysics
   !!
   D  = 4000.            ! Average depth (m)
-  l_coriolis = .FALSE.  ! Introduce rotation
-  f0 = 1.E-4            ! Coriolis constant
+  l_coriolis = .TRUE.  ! Introduce rotation
+  f0 = 1E-4            ! Coriolis constant
   !!
 /
 
 &ninitial
   !!
-  l_gaussian = .TRUE.	  ! Initial condition set as gaussian.
-  h0 = 5.               ! Amplitude of the perturbation
+  l_gaussian = .FALSE.	  ! Initial condition set as gaussian.
+  l_stepfunc = .TRUE.   ! Initial condition set as step function
+  h0 = 0.5               ! Amplitude of the perturbation
   Lw = 20.              ! Width of the gaussian L = Lw*width
 /
 
@@ -35,15 +36,15 @@
 &nboundaries
   l_write_uv = .TRUE.   ! Should we output U and V? (H is always writen)
   !!
-  l_solidbc  = .TRUE.   ! Impose solid boundaries
+  l_solidbc  = .FALSE.   ! Impose solid boundaries
   !!
-  l_periodic = .FALSE.  ! Impose periodic boundaries
+  l_periodic = .TRUE.  ! Impose periodic boundaries
   l_up = .FALSE.        ! Periodic in E-W
-  l_vp = .FALSE.        ! Periodic in N-S
+  l_vp = .TRUE.        ! Periodic in N-S
   !!
-  l_spongebc = .FALSE.     ! Introduce open conditions
-  S  = 20                  ! Number of grid points in the sponge (if l_spongebc TRUE)
-  btype = 0                ! 0 open BC everywhere, 1 open BC N-S, 2 open BC E-W
+  l_spongebc = .TRUE.     ! Introduce open conditions
+  S  = 100                  ! Number of grid points in the sponge (if l_spongebc TRUE)
+  btype = 2                ! 0 open BC everywhere, 1 open BC N-S, 2 open BC E-W
   l_write_domain = .TRUE.  ! If FALSE the netcdf will include the sponge
   l_alpha = .TRUE.         ! Save the sponge
 /
