@@ -472,22 +472,22 @@ PROGRAM ST_VENANT
         END IF
 
         CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, h(1 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
-                      'data/h_check.nc', 'h')
+                      'data/h_f1.nc', 'h')
 
         IF (l_write_uv) THEN
             CALL WRITE_NC(vx_u(0 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, u(0 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
-                        'data/u_check.nc', 'u')
+                        'data/u_f1.nc', 'u')
             CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_v(0 + sy:Ny - sy), vtime, v(1 + sx:Nx - sx, 0 + sy:Ny - sy, :), &
-                        'data/v_check.nc', 'v')
+                        'data/v_f1.nc', 'v')
         END IF
 
     ELSE
 
-        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_check.nc', 'h')
+        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_f1.nc', 'h')
 
         IF (l_write_uv) THEN
-            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_check.nc', 'u')
-            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_check.nc', 'v')
+            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_f1.nc', 'u')
+            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_f1.nc', 'v')
         END IF
 
     END IF
@@ -622,7 +622,7 @@ CONTAINS
 
         et = ep + ek
 
-        OPEN (11, file='data/energy_check.dat', status='replace')
+        OPEN (11, file='data/energy_f1.dat', status='replace')
         DO jt = 1, nb_save
             WRITE (11, *) jt, ep(jt), ek(jt), et(jt)
         END DO

@@ -13,7 +13,7 @@
   !!
   D  = 4000.            ! Average depth (m)
   l_coriolis = .TRUE.  ! Introduce rotation
-  f0 = 1E-4            ! Coriolis constant
+  f0 = 0.5E-4            ! Coriolis constant
   !!
 /
 
