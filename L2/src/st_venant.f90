@@ -35,7 +35,6 @@ PROGRAM ST_VENANT
     IMPLICIT none
 
     REAL, PARAMETER :: &
-        & g = 9.81, &  ! gravity acceleration        [m s^-2]
         & rho = 1027  ! Density sea water [kg/m3]
 
     !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,7 +46,9 @@ PROGRAM ST_VENANT
     !! DONT CHANGE THE FOLLOWING PARAMETERS HERE!!!! DO IT IN THE NAMELIST
     REAL ::                      &
          & D = 4000.,            &  ! average depth
-         & f0 = 1.e-4,           &  ! Coriolis constant (only used if l_coriolis is set to true)
+         & g = 9.81,             &  ! gravity acceleration        [m s^-2]
+         & f0 = 1.E-4,           &  ! Coriolis constant (only used if l_coriolis is set to true)
+         & beta = 2.287E-11,     &
          & rcfl = 0.3,           &  ! CFL criterion
          & gamma = 0.1,          &  ! Asselin coefficient
          & Lx = 5.*1e+7,         &  ! size of domain (m)
@@ -64,14 +65,18 @@ PROGRAM ST_VENANT
          & btype = 2                ! Where the sponge should be implemented.
     !!
     LOGICAL :: l_write_uv = .TRUE.         ! should we output U and V? H is always writen!
+    LOGICAL :: l_reducedgravity = .TRUE.   !
     LOGICAL :: l_coriolis = .TRUE.         ! should we include coriolis?
+    LOGICAL :: l_betaplane = .TRUE.
     LOGICAL :: l_stepfunc = .TRUE.         ! Should the initial condition be a guassian?
     LOGICAL :: l_gaussian = .TRUE.         ! Shound the initial condition be a gaussian?
+    LOGICAL :: l_gaussian_alt = .TRUE.
     LOGICAL :: l_solidbc = .TRUE.          ! Should we use solid bc?
     LOGICAL :: l_periodic = .TRUE.         ! Should we use periodic bc?
     LOGICAL :: l_up = .TRUE.               ! Should bc be periodic in u?
     LOGICAL :: l_vp = .TRUE.               ! Should bc be periodic in v?
     LOGICAL :: l_spongebc = .TRUE.         ! Should we use a sponge bc?
+    LOGICAL :: l_infinitecoast = .TRUE.    ! Should we have a inifinite coast?
     LOGICAL :: l_write_domain = .TRUE.     ! Should we save the fields with the sponge?
     LOGICAL :: l_alpha = .TRUE.            ! Should we output alpha_u and alpha_v?
     LOGICAL :: l_energy = .TRUE.           ! should we output energy?
@@ -87,20 +92,21 @@ PROGRAM ST_VENANT
     !
     REAL(4), DIMENSION(:, :, :), ALLOCATABLE :: u, v, h ! Storage arrays, no need for heavy double precision => float!
     !
-    REAL, DIMENSION(:, :), ALLOCATABLE :: Xdu, Xdv, Xdh, U_t, V_t, U_v, V_u, alpha_u, alpha_v ! lolo
+    REAL, DIMENSION(:, :), ALLOCATABLE :: Xdu, Xdv, Xdh, U_t, V_t, U_v, V_u, alpha_u, alpha_v, f ! lolo
     !!
     REAL, DIMENSION(:), ALLOCATABLE :: vx_t, vy_t, vx_u, vy_v, vtime, ek, ep, et
 
     !! Indices for loops
-    INTEGER :: nt, nt_save, jt_save = 1, ji, jj, jf, jt, jc, nb_save, sx, sy
+    INTEGER :: nt, nt_save, jt_save = 1, ji, jj, jf, jt, jc, nb_save, sx, sy, ii
     REAL    :: du, dv, dh
 
     !! Defining namelist sections:
     NAMELIST /ngrid/ Nx, Ny, Lx, Ly, Tm_d, rfsave
-    NAMELIST /nphysics/ D, l_coriolis, f0
-    NAMELIST /ninitial/ l_gaussian, l_stepfunc, h0, Lw
+    NAMELIST /nphysics/ D, l_coriolis, f0, beta, l_reducedgravity, l_betaplane
+    NAMELIST /ninitial/ l_gaussian, l_stepfunc, l_gaussian_alt, h0, Lw
     NAMELIST /nnumerics/ rcfl, gamma
-    NAMELIST /nboundaries/ l_write_uv, l_solidbc, l_periodic, l_up, l_vp, l_spongebc, S, btype, l_write_domain, l_alpha
+    NAMELIST /nboundaries/ l_write_uv, l_solidbc, l_periodic, l_up, l_vp, &
+              & l_spongebc, S, btype, l_write_domain, l_alpha, l_infinitecoast
 
     !! Declarations are done, starting the program !
 
@@ -120,6 +126,10 @@ PROGRAM ST_VENANT
     CLOSE (11)
     PRINT *, 'Done reading namelist.'
     !! Namelist paramters are now known!
+
+    IF (l_reducedgravity) THEN
+      g = g*(1028. - 1024.)/1000.
+    END IF
 
     dx = Lx/REAL(Nx)  !delta x
     dy = Ly/REAL(Ny)  !delta y
@@ -202,19 +212,34 @@ PROGRAM ST_VENANT
          &     vtime(nb_save), u_tmp(0:Nx, Ny, -1:1), v_tmp(Nx, 0:Ny, -1:1), h_tmp(Nx, Ny, -1:1),   &
          &     Xdu(0:Nx, 1:Ny), Xdv(1:Nx, 0:Ny), Xdh(Nx, Ny),    &
          &     U_t(Nx, Ny), V_t(Nx, Ny), U_v(1:Nx, 0:Ny), V_u(0:Nx, 1:Ny), &
-         &     ep(nb_save), ek(nb_save), et(nb_save))
+         &     ep(nb_save), ek(nb_save), et(nb_save), f(0:Nx, 0:Ny))
 
     IF (l_write_uv) ALLOCATE (u(0:Nx, Ny, nb_save), v(Nx, 0:Ny, nb_save))
 
     !! Building coordinates and calendar vectors:
     vx_u(:) = (/((ji - sx)*dx, ji=0, Nx)/) ! x coordinates at U-points, starts for i=0 ! => size Nx+1
-    vy_v(:) = (/((jj - sy)*dy, jj=0, Ny)/) ! y coordinates at V-points, starts for j=0 ! => size Ny+1
+
+    IF (l_coriolis .and. l_betaplane) THEN
+      vy_v(:) = (/((jj - Ny/2. - sy)*dy, jj=0, Ny)/)
+    ELSE
+      vy_v(:) = (/((jj - sy)*dy, jj=0, Ny)/) ! y coordinates at V-points, starts for j=0 ! => size Ny+1
+    END IF
+
 
     vx_t(:) = vx_u(0:Nx - 1) + dx/2.; ! x coordinates at T-points...
     vy_t(:) = vy_v(0:Ny - 1) + dy/2.; ! y coordinates at T-points...
 
+
+
     vtime(:) = (/((jt - 1)*rfsave, jt=1, nb_save)/) ! in hours !!!
 
+
+    IF (l_coriolis .and. l_betaplane) THEN
+      !vx_t(:) = vx_t - Lx/2. ! x coordinates at T-points...
+      DO ii = 0, Nx
+        f(ii, 1:Ny) = beta*vy_t(1:Ny)
+      END DO
+    END IF
     !! Building sponge.
 
     ALLOCATE (alpha_u(0:Nx, Ny))
@@ -242,10 +267,20 @@ PROGRAM ST_VENANT
                 h(ji, jj, 1) = h0*exp(-((vx_t(ji) - 0.5*Lx)/Lw)**2.-((vy_t(jj) - 0.5*Ly)/Lw)**2.)
             END DO
         END DO
+
     ELSE IF (l_stepfunc) THEN
         PRINT *, 'Initial condition is set as Step Function'
         h(1:Nx/2, :, 1) = h0
         h(Nx/2 + 1:Nx, :, 1) = -h0
+
+    ELSE IF (l_gaussian_alt) THEN
+      Lw = min(Lx, Ly)/Lw
+      DO jj = 1, Ny
+        DO ji = 1, Nx
+          h(ji, jj, 1) = h0*exp(-((vx_t(ji) - 0.5*Lx)/Lw)**2 - ((vy_t(jj) - 0.*Ly)/Lw)**2)
+        END DO
+      END DO
+
     END IF
 
     ! Saving initial condition:
@@ -283,6 +318,9 @@ PROGRAM ST_VENANT
                                 + v_tmp(2, 0:Ny - 1, -1) + v_tmp(1, 0:Ny - 1, -1) )
           V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, -1) + v_tmp(1, 1:Ny, -1)&
                                 + v_tmp(1, 0:Ny - 1, -1) + v_tmp(Nx, 0:Ny - 1, -1) )
+        ELSE IF (l_solidbc) THEN
+          V_u(0, 1:Ny) = 0
+          V_u(Nx, 1:Ny) = 0
           ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
         END IF
         ! u_tmp(0:Nx, 1:Ny, )
@@ -292,6 +330,9 @@ PROGRAM ST_VENANT
                               + u_tmp(0:Nx - 1, 2, -1) + u_tmp(0:Nx - 1, 1, -1) )
           U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Ny, -1) + u_tmp(1:Nx, 1, -1)&
                                 + u_tmp(0:Nx - 1, 1, -1) + u_tmp(0:Nx - 1, Ny, -1))
+        ELSE IF (l_solidbc) THEN
+          U_v(1:Nx, 0) = 0
+          U_v(1:Nx, Ny) = 0
         END IF
 
     END IF
@@ -312,10 +353,13 @@ PROGRAM ST_VENANT
 
     ! Adding Coriolis
     ! ===============
-    IF (l_coriolis) THEN
+    IF (l_coriolis .and. l_betaplane) THEN
         ! Add Coriolis here
+        Xdu(:, :) = Xdu(:, :) + f(:, 1:Ny)*V_u(:, :)
+        Xdv(:, :) = Xdv(:, :) - f(1:Nx, :)*U_v(:, :)
+    ELSE IF (l_coriolis) THEN
         Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
-        Xdv = Xdv - f0*U_v(:, :)
+        Xdv(:, :) = Xdv(:, :) - f0*U_v(:, :)
     END IF
 
     ! Convergence/divergence
@@ -367,6 +411,9 @@ PROGRAM ST_VENANT
                                     + v_tmp(2, 0:Ny - 1, 0) + v_tmp(1, 0:Ny - 1, 0) )
               V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, 0) + v_tmp(1, 1:Ny, 0)&
                                     + v_tmp(1, 0:Ny - 1, 0) + v_tmp(Nx, 0:Ny - 1, 0) )
+            ELSE IF (l_solidbc) THEN
+              V_u(0, 1:Ny) = 0
+              V_u(Nx, 1:Ny) = 0
               ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
             END IF
             IF (l_vp .and. l_periodic) THEN
@@ -374,6 +421,9 @@ PROGRAM ST_VENANT
                                   + u_tmp(0:Nx - 1, 2, 0) + u_tmp(0:Nx - 1, 1, 0) )
               U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Ny, 0) + u_tmp(1:Nx, 1, 0)&
                                     + u_tmp(0:Nx - 1, 1, 0) + u_tmp(0:Nx - 1, Ny, 0))
+            ELSE IF (l_solidbc) THEN
+              U_v(1:Nx, 0) = 0
+              U_v(1:Nx, Ny) = 0
             END IF
         END IF
 
@@ -393,10 +443,13 @@ PROGRAM ST_VENANT
 
         ! Adding Coriolis
         ! ===============
-        IF (l_coriolis) THEN
+        IF (l_coriolis .and. l_betaplane) THEN
             ! Add Coriolis here
-            Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
-            Xdv(:, :) = Xdv(:, :) - f0*U_v(:, :)
+            Xdu(:, :) = Xdu(:, :) + f(:, 1:Ny)*V_u(:, :)
+            Xdv(:, :) = Xdv(:, :) - f(1:Nx, :)*U_v(:, :)
+        !ELSE IF (l_coriolis) THEN
+        !    Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
+        !    Xdv(:, :) = Xdv(:, :) - f0*U_v(:, :)
         END IF
 
         ! Convergence/divergence
@@ -472,22 +525,22 @@ PROGRAM ST_VENANT
         END IF
 
         CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, h(1 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
-                      'data/h_f1.nc', 'h')
+                      'data/h_atlantic.nc', 'h')
 
         IF (l_write_uv) THEN
             CALL WRITE_NC(vx_u(0 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, u(0 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
-                        'data/u_f1.nc', 'u')
+                        'data/u_atlantic.nc', 'u')
             CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_v(0 + sy:Ny - sy), vtime, v(1 + sx:Nx - sx, 0 + sy:Ny - sy, :), &
-                        'data/v_f1.nc', 'v')
+                        'data/v_atlantic.nc', 'v')
         END IF
 
     ELSE
 
-        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_f1.nc', 'h')
+        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_atlantic.nc', 'h')
 
         IF (l_write_uv) THEN
-            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_f1.nc', 'u')
-            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_f1.nc', 'v')
+            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_atlantic.nc', 'u')
+            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_atlantic.nc', 'v')
         END IF
 
     END IF
@@ -562,6 +615,11 @@ CONTAINS
 
         END DO
 
+        IF (l_infinitecoast .and. btype == 1) THEN
+          alpha_u(:, 1:Sh) = 1
+          alpha_v(:, 1:Sh) = 1
+        END IF
+
         IF (l_alpha) THEN
             ! Write alpha_u and alpha_v
             CALL WRITE_NC_2D(vx_u(0:Nx), vy_t(1:Ny), REAL(alpha_u(0:Nx, 1:Ny), 4), 'data/alpha_u.nc', 'alpha_u')
@@ -622,7 +680,7 @@ CONTAINS
 
         et = ep + ek
 
-        OPEN (11, file='data/energy_f1.dat', status='replace')
+        OPEN (11, file='data/energy_atlantic.dat', status='replace')
         DO jt = 1, nb_save
             WRITE (11, *) jt, ep(jt), ek(jt), et(jt)
         END DO
