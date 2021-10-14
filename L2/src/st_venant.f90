@@ -447,9 +447,9 @@ PROGRAM ST_VENANT
             ! Add Coriolis here
             Xdu(:, :) = Xdu(:, :) + f(:, 1:Ny)*V_u(:, :)
             Xdv(:, :) = Xdv(:, :) - f(1:Nx, :)*U_v(:, :)
-        !ELSE IF (l_coriolis) THEN
-        !    Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
-        !    Xdv(:, :) = Xdv(:, :) - f0*U_v(:, :)
+        ELSE IF (l_coriolis) THEN
+            Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
+            Xdv(:, :) = Xdv(:, :) - f0*U_v(:, :)
         END IF
 
         ! Convergence/divergence
@@ -525,22 +525,22 @@ PROGRAM ST_VENANT
         END IF
 
         CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, h(1 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
-                      'data/h_atlantic.nc', 'h')
+                      'data/h_equatorial.nc', 'h')
 
         IF (l_write_uv) THEN
             CALL WRITE_NC(vx_u(0 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, u(0 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
-                        'data/u_atlantic.nc', 'u')
+                        'data/u_equatorial.nc', 'u')
             CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_v(0 + sy:Ny - sy), vtime, v(1 + sx:Nx - sx, 0 + sy:Ny - sy, :), &
-                        'data/v_atlantic.nc', 'v')
+                        'data/v_equatorial.nc', 'v')
         END IF
 
     ELSE
 
-        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_atlantic.nc', 'h')
+        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_equatorial.nc', 'h')
 
         IF (l_write_uv) THEN
-            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_atlantic.nc', 'u')
-            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_atlantic.nc', 'v')
+            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_equatorial.nc', 'u')
+            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_equatorial.nc', 'v')
         END IF
 
     END IF
@@ -680,7 +680,7 @@ CONTAINS
 
         et = ep + ek
 
-        OPEN (11, file='data/energy_atlantic.dat', status='replace')
+        OPEN (11, file='data/energy_equatorial.dat', status='replace')
         DO jt = 1, nb_save
             WRITE (11, *) jt, ep(jt), ek(jt), et(jt)
         END DO

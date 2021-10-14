@@ -1,2 +1,40 @@
 \section{Theory}
 \label{sec:theory}
+
+The presence of solid boundaries in a fluid has a large impact on the dynamics. Such boundaries may be actual physical boundaries such as the continents in the oceans and vorticity boundaries such as the equator in both atmosphere and ocean. A perturbation interacting with these boundaries produce Kelvin waves. To study this, we will consider the linearized shallow water equations:
+	\begin{align}
+		&\partial_t u - f_0 v = -g \partial_x h \label{eq:dudt} \\
+		&\partial_t v + f_0 u = -g \partial_y h \label{eq:dvdt} \\
+		&\partial_t h + D_0 \qty(\partial_x u + \partial_y v) = 0, \label{eq:dhdt}
+	\end{align}
+where $\partial_{q_i}$ denotes partial differentiation or ordinary differentiation given the context. $u$ and $v$ are the zonal and meridional velocities, respectively, while $h$ is the sea-surface height. The planetary vorticity is $f_0$, while $g$ is the gravitational acceleration, and $D_0$ is the depth of the system.
+
+\subsection{Southern boundary}
+We will first consider the case of a southern boundary, i.e. the equator. The meridional velocity of the flow must be zero at the boundary, and in the absence of friction, a reasonable assumption is then that the meridional velocity is zero everywhere. A general solution to the system of equations (eqs. \eqref{eq:dudt}, \eqref{eq:dvdt}, and \eqref{eq:dhdt}) is then
+	\begin{align}
+		h &= \frac{D_0}{g} G_0\qty(x - ct)\exp(-y / R) \label{eq:h} \\
+		u &= G_0 \exp(-y / R) \label{eq:u} \\
+		v &= 0.
+	\end{align}
+Here $G_0$ is a general wave solution propagating eastwards, while $c \equiv \sqrt{gH}$ is the phase speed of the wave. The sea surface height and zonal velocity is maximum at the boundary and decays northwards.
+
+\subsection{Equatorial wave}
+Kelvin waves are observed travelling in the same direction on both sides of the equator. To study this, we will use the equatorial beta-plane approximation where $f0$ is small, and so $f \approx \beta y$, where $\beta$ is a constant. In this scenario, the system of equations takes the form
+	\begin{align}
+		&\partial_t u - \beta y v = -g\partial_x h \\
+		&\partial_t v + \beta y u = -g\partial_y h \\
+		&\partial_t h + D_0\qty(\partial_x u + \partial_y v) = 0.
+	\end{align}
+Assuming again that $v = 0$, a general solution can be found:
+	\begin{align}
+		h &= \frac{D_0}{g} G_0\qty(x - ct)\exp\qty(- \frac{y^2}{2R^2_e}) \\
+		u &= G_0\qty(x - ct)\exp\qty(- \frac{y^2}{2R^2_e}) \\
+		v &= 0,
+	\end{align}
+where $R_e \equiv \qty(\sqrt{gD_0} / \beta)^{1/2}$ is the equatorial barotropic Rossby radius. The ocean can roughly be divided into two layers in the vertical due to the presence of a thermocline. Assuming a bottom layer with essentially no flow, we get the reduced gravity equations:
+	\begin{align}
+		\partial_t u - \beta y v = -\partial_x \phi \\
+		\partial_t v + \beta y u = -\partial_y \phi \\
+		\partial_t \phi + c^2\qty(\partial_x u + \partial_y v) = 0,
+	\end{align}
+Here $\phi \equiv g' h$ is the streamfunction, $g' \equiv \delta \rho / \rho$ is the reduced gravity, and $c \equiv \sqrt{g' D'_0}$ is the propagation velocity where $D_0$ is the depth of the thermocline.

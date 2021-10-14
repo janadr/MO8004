@@ -6,6 +6,8 @@
 *.mod
 *.x
 *-checkpoint.ipynb
+*.bcf
+*.run.xml
 *.log
 *.gz
 *.blg

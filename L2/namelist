@@ -1,10 +1,10 @@
 &ngrid
   !!
-  Nx = 200              ! Number of x T points
-  Ny = 200              ! Number of y T points
-  Lx =  1.E7            ! Width of domain in x (m)  1.e6 = 1000 km
-  Ly =  1.E7    	      ! Width of domain in y (m)  1.e6 = 1000 km
-  Tm_d = 10.             ! Length of the run in days
+  Nx = 250              ! Number of x T points
+  Ny = 250              ! Number of y T points
+  Lx =  2.E7            ! Width of domain in x (m)  1.e6 = 1000 km
+  Ly =  2.E7    	      ! Width of domain in y (m)  1.e6 = 1000 km
+  Tm_d = 35.             ! Length of the run in days
   rfsave = 4         ! Frequency at which to save fields in hours.
   !!
 /
@@ -43,12 +43,12 @@
   l_solidbc  = .TRUE.   ! Impose solid boundaries
   !!
   l_periodic = .FALSE.  ! Impose periodic boundaries
-  l_up = .FALSE.        ! Periodic in E-W
+  l_up = .TRUE.        ! Periodic in E-W
   l_vp = .FALSE.        ! Periodic in N-S
   !!
   l_spongebc = .FALSE.     ! Introduce open conditions
   S  = 50                  ! Number of grid points in the sponge (if l_spongebc TRUE)
-  btype = 0                ! 0 open BC everywhere, 1 open BC N-S, 2 open BC E-W
+  btype = 1                ! 0 open BC everywhere, 1 open BC N-S, 2 open BC E-W
   l_write_domain = .TRUE.  ! If FALSE the netcdf will include the sponge
   l_alpha = .FALSE.         ! Save the sponge
   l_infinitecoast = .FALSE.

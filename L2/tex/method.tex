@@ -1,2 +1,34 @@
 \section{Method}
 \label{sec:method}
+We will follow the same dicretization scheme and method as done in a previous paper \citep{lab1}, with some further implementations of reduced gravity and the beta plane.
+
+The initial condition is a gaussian centered at the equator
+	\begin{equation}
+		h_i = h_0\exp\qty[-((x - 0.5*L_x)/L_w)^2 - (y/L_w)^2],
+	\end{equation}
+where $L_i$ denotes the domain size and $L_w$ is a scaling factor.
+
+For studying the southern border, we will assume periodic boundary conditions in the zonal direction and a open northern border. We will look at two different cases, that of the Atlantic ocean and the Baltic sea with basin parameters shown in Table \ref{tab:southernborder}.
+	\begin{table}[htbp]
+		\begin{tabular}{lll}
+			\textbf{Region} & \textbf{L}  & \textbf{D}$'_0$  \\
+			Atlantic ocean & $10^7\, \text{m}$  & $1000\, \text{m}$  \\
+			Baltic sea & $10^6\, \text{m}$ & $30\, \text{m}$ 
+		\end{tabular}
+		\caption{Basin parameters for the Atlantic ocean and Baltic sea. $L$ denotes the domain size, while $D'_0$ is the thermocline depth.}
+		\label{tab:southernborder}
+	\end{table}
+
+When looking at the equatorial wave, we use solid boundaries in all directions with domain size $L = 2 \cdot 10^7\, \text{m}$ and thermocline depth $D'_0 = 1000\, \text{m}$.
+
+Global parameters for the simulations are presented in Table \ref{tab:parameters}
+	\begin{table}[htbp]
+		\begin{tabular}{ll}
+			\textbf{Parameter} & \textbf{Value} \\
+			$ g' $ & $ 0.04 \, \text{m}\text{s}^{-2} $ \\
+			$ f_0 $ & $ 10^{-4} \, \text{s}^{-1}$ \\
+			$ \beta $ & $ 2.287 \cdot 10^{-11} \, \text{ (sm) }^{-1}  $
+		\end{tabular}
+		\caption{Model parameters.}
+		\label{tab:parameters}
+	\end{table}
