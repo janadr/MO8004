@@ -21,7 +21,7 @@
   f0 =  1E-4            ! Coriolis constant
   beta = 2.287E-11     ! beta plane constant
   alpha = -9.3E-4
-  u0 = 0.
+  u0 = 10.
   !!
 /
 

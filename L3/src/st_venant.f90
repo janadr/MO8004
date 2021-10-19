@@ -337,9 +337,6 @@ PROGRAM ST_VENANT
     ! Coriolis
     ! ========
 
-    IF (l_meanflow) THEN
-      CALL ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES()
-    END IF
 
     IF (l_coriolis) THEN
         ! Define V_u, v in a u point
@@ -382,6 +379,11 @@ PROGRAM ST_VENANT
         Xdv(:, Ny) = Xdv(:, Ny) - g/dy*(h_tmp(:, 1, -1) - h_tmp(:, Ny, -1))
     END IF
 
+
+    IF (l_meanflow) THEN
+      CALL ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES()
+    END IF
+
     ! Adding Coriolis
     ! ===============
     IF (l_coriolis) THEN
@@ -390,22 +392,25 @@ PROGRAM ST_VENANT
         Xdv(:, :) = Xdv(:, :) - f(1:Nx, :)*U_v(:, :)
     END IF
 
-    ! Convergence/divergence
-    ! ======================
+
+    IF (l_meanflow) THEN
+      CALL ADD_MEAN_FLOW_TO_SURFACE_ELEVATION()
+    END IF
+
     IF (l_slopingbottom) THEN
       DO ji = 1, Nx
-        Xdh(ji, :) = Xdh(ji, :) - (D + alpha*vy_t(:)) &
+        Xdh(ji, :) = Xdh(ji, :) - alpha*vy_t(:) &
                   & *( (u_tmp(ji, :, -1) - u_tmp(ji-1, :, -1))/dx &
                   & + (v_tmp(ji, 1:Ny, -1) - v_tmp(ji, 0:Ny - 1, -1))/dy) &
                   & + 0.5*alpha*(v_tmp(ji, 1:Ny, -1) + v_tmp(ji, 0:Ny - 1, -1))
       END DO
-    ELSE IF (l_meanflow) THEN
-      CALL ADD_MEAN_FLOW_TO_SURFACE_ELEVATION()
-    ELSE
-      Xdh(:, :) = Xdh(:, :) - D &
-                & *((u_tmp(1:Nx, :, -1) - u_tmp(0:Nx - 1, :, -1))/dx &
-                & + (v_tmp(:, 1:Ny, -1) - v_tmp(:, 0:Ny - 1, -1))/dy)
     END IF
+    ! Convergence/divergence
+    ! ======================
+
+    Xdh(:, :) = Xdh(:, :) - D &
+              & *((u_tmp(1:Nx, :, -1) - u_tmp(0:Nx - 1, :, -1))/dx &
+              & + (v_tmp(:, 1:Ny, -1) - v_tmp(:, 0:Ny - 1, -1))/dy)
 
     ! Time step
     ! =========
@@ -493,20 +498,22 @@ PROGRAM ST_VENANT
         ! ===============
         ! Xdh(:, :) = Xdh(:, :) - D*((u_tmp(1:Nx, :, 0) - u_tmp(0:Nx - 1, :, 0))/dx + (v_tmp(:, 1:Ny, 0) - v_tmp(:, 0:Ny - 1, 0))/dy)
 
+        IF (l_meanflow) THEN
+          CALL ADD_MEAN_FLOW_TO_SURFACE_ELEVATION()
+        END IF
+
         IF (l_slopingbottom) THEN
           DO ji = 1, Nx
-            Xdh(ji, :) = Xdh(ji, :) - (D + alpha*vy_t(:)) &
+            Xdh(ji, :) = Xdh(ji, :) - alpha*vy_t(:) &
                       & *( (u_tmp(ji, :, 0) - u_tmp(ji-1, :, 0))/dx &
-                      & + (v_tmp(ji, 1:Ny, 0) - v_tmp(ji, 0:Ny - 1, 0))/dy) &
+                      & + (v_tmp(ji, 1:Ny, 0) - v_tmp(ji, 0:Ny - 1, 0))/dy ) &
                       & + 0.5*alpha*(v_tmp(ji, 1:Ny, 0) + v_tmp(ji, 0:Ny - 1, 0))
           END DO
-        ELSE IF (l_meanflow) THEN
-          CALL ADD_MEAN_FLOW_TO_SURFACE_ELEVATION()
-        ELSE
-          Xdh(:, :) = Xdh(:, :) - D &
-                    & *((u_tmp(1:Nx, :, 0) - u_tmp(0:Nx - 1, :, 0))/dx &
-                    & + (v_tmp(:, 1:Ny, 0) - v_tmp(:, 0:Ny - 1, 0))/dy)
         END IF
+
+        Xdh(:, :) = Xdh(:, :) - D &
+                  & *((u_tmp(1:Nx, :, 0) - u_tmp(0:Nx - 1, :, 0))/dx &
+                  & + (v_tmp(:, 1:Ny, 0) - v_tmp(:, 0:Ny - 1, 0))/dy)
 
         ! Time step
         ! =========
