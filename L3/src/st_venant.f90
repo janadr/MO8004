@@ -44,11 +44,14 @@ PROGRAM ST_VENANT
     !! => you can save your different namelist files...
 
     !! DONT CHANGE THE FOLLOWING PARAMETERS HERE!!!! DO IT IN THE NAMELIST
+    REAL :: R
     REAL ::                      &
          & D = 4000.,            &  ! average depth
          & g = 9.81,             &  ! gravity acceleration        [m s^-2]
          & f0 = 1.E-4,           &  ! Coriolis constant (only used if l_coriolis is set to true)
          & beta = 2.287E-11,     &
+         & alpha = 1,            &
+         & u0 = 1,                &
          & rcfl = 0.3,           &  ! CFL criterion
          & gamma = 0.1,          &  ! Asselin coefficient
          & Lx = 5.*1e+7,         &  ! size of domain (m)
@@ -68,6 +71,9 @@ PROGRAM ST_VENANT
     LOGICAL :: l_reducedgravity = .TRUE.   !
     LOGICAL :: l_coriolis = .TRUE.         ! should we include coriolis?
     LOGICAL :: l_betaplane = .TRUE.
+    LOGICAL :: l_geostrophic = .TRUE.
+    LOGICAL :: l_meanflow = .TRUE.
+    LOGICAL :: l_slopingbottom = .TRUE.
     LOGICAL :: l_stepfunc = .TRUE.         ! Should the initial condition be a guassian?
     LOGICAL :: l_gaussian = .TRUE.         ! Shound the initial condition be a gaussian?
     LOGICAL :: l_gaussian_alt = .TRUE.
@@ -77,6 +83,7 @@ PROGRAM ST_VENANT
     LOGICAL :: l_vp = .TRUE.               ! Should bc be periodic in v?
     LOGICAL :: l_spongebc = .TRUE.         ! Should we use a sponge bc?
     LOGICAL :: l_infinitecoast = .TRUE.    ! Should we have a inifinite coast?
+    LOGICAL :: l_equatorial = .TRUE.       ! Should we center grid on equator?
     LOGICAL :: l_write_domain = .TRUE.     ! Should we save the fields with the sponge?
     LOGICAL :: l_alpha = .TRUE.            ! Should we output alpha_u and alpha_v?
     LOGICAL :: l_energy = .TRUE.           ! should we output energy?
@@ -97,16 +104,18 @@ PROGRAM ST_VENANT
     REAL, DIMENSION(:), ALLOCATABLE :: vx_t, vy_t, vx_u, vy_v, vtime, ek, ep, et
 
     !! Indices for loops
-    INTEGER :: nt, nt_save, jt_save = 1, ji, jj, jf, jt, jc, nb_save, sx, sy, ii
+    INTEGER :: nt, nt_save, jt_save = 1, ji, jj, jf, jt, jc, nb_save, sx, sy, ii, kk
     REAL    :: du, dv, dh
 
     !! Defining namelist sections:
     NAMELIST /ngrid/ Nx, Ny, Lx, Ly, Tm_d, rfsave
-    NAMELIST /nphysics/ D, l_coriolis, f0, beta, l_reducedgravity, l_betaplane
+    NAMELIST /nphysics/ D, l_coriolis, f0, beta, l_reducedgravity, l_betaplane, &
+              & l_geostrophic, l_meanflow, l_slopingbottom, alpha, u0
     NAMELIST /ninitial/ l_gaussian, l_stepfunc, l_gaussian_alt, h0, Lw
     NAMELIST /nnumerics/ rcfl, gamma
     NAMELIST /nboundaries/ l_write_uv, l_solidbc, l_periodic, l_up, l_vp, &
-              & l_spongebc, S, btype, l_write_domain, l_alpha, l_infinitecoast
+              & l_spongebc, S, btype, l_write_domain, l_alpha, l_infinitecoast, &
+              & l_equatorial
 
     !! Declarations are done, starting the program !
 
@@ -216,13 +225,14 @@ PROGRAM ST_VENANT
 
     IF (l_write_uv) ALLOCATE (u(0:Nx, Ny, nb_save), v(Nx, 0:Ny, nb_save))
 
+
     !! Building coordinates and calendar vectors:
     vx_u(:) = (/((ji - sx)*dx, ji=0, Nx)/) ! x coordinates at U-points, starts for i=0 ! => size Nx+1
+    vy_v(:) = (/((jj - sy)*dy, jj=0, Ny)/)
 
-    IF (l_coriolis .and. l_betaplane) THEN
-      vy_v(:) = (/((jj - Ny/2. - sy)*dy, jj=0, Ny)/)
-    ELSE
-      vy_v(:) = (/((jj - sy)*dy, jj=0, Ny)/) ! y coordinates at V-points, starts for j=0 ! => size Ny+1
+    IF (l_equatorial) THEN
+      vx_u(:) = vx_u(:) - 0.5*vx_u(Nx)
+      vy_v(:) = vy_v(:) - 0.5*vy_v(Ny)
     END IF
 
 
@@ -234,10 +244,10 @@ PROGRAM ST_VENANT
     vtime(:) = (/((jt - 1)*rfsave, jt=1, nb_save)/) ! in hours !!!
 
 
-    IF (l_coriolis .and. l_betaplane) THEN
+    IF (l_coriolis) THEN
       !vx_t(:) = vx_t - Lx/2. ! x coordinates at T-points...
       DO ii = 0, Nx
-        f(ii, 1:Ny) = beta*vy_t(1:Ny)
+        f(ii, 0:Ny) = f0 + beta*vy_v(0:Ny)
       END DO
     END IF
     !! Building sponge.
@@ -275,11 +285,34 @@ PROGRAM ST_VENANT
 
     ELSE IF (l_gaussian_alt) THEN
       Lw = min(Lx, Ly)/Lw
+      !Lw = sqrt(9.81*D)/f0*Lw
       DO jj = 1, Ny
         DO ji = 1, Nx
-          h(ji, jj, 1) = h0*exp(-((vx_t(ji) - 0.5*Lx)/Lw)**2 - ((vy_t(jj) - 0.*Ly)/Lw)**2)
+          h(ji, jj, 1) = h0*exp(-((vx_t(ji) - 0.0*Lx)/Lw)**2 - (vy_t(jj)/Lw)**2)
         END DO
       END DO
+      !IF (l_geostrophic) THEN
+      !  DO jj = 1, Ny
+      !    DO ji = 1, Nx
+      !      u_tmp(ji, jj, -1) = -2.*g*vy_v(jj-1)/(Lw**2*f0) &
+      !                        & *h0*exp(-((vx_u(ji-1) - 0.5*Lx)/Lw)**2 - (vy_v(jj-1)/Lw)**2)
+      !      v_tmp(ji, jj, -1) = 2.*g*(vx_u(ji-1) - 0.5*Lx)/(Lw**2*f0) &
+      !                          & *h0*exp(-((vx_u(ji-1) - 0.5*Lx)/Lw)**2 - (vy_v(jj-1)/Lw)**2)
+      !    END DO
+      !  END DO
+      !END IF
+      IF (l_geostrophic) THEN
+        DO jj = 1, Ny
+          DO ji = 1, Nx
+            u_tmp(ji, jj, -1) = 2.*g*(vy_t(jj) - dx/2)/(Lw**2*f0) &
+                              & *h0*exp(-((vx_u(ji))/Lw)**2 -((vy_t(jj) - dx/2)/Lw)**2)
+            v_tmp(ji, jj, -1) = -2.*g*(vx_t(ji) - dx/2)/(Lw**2*f0) &
+                              & *h0*exp(-((vx_t(ji)-dx/2)/Lw)**2 - (vy_v(jj)/Lw)**2)
+          END DO
+        END DO
+        u_tmp(0, :, -1)=2*u_tmp(1, :, -1) - u_tmp(2, :, -1)
+        v_tmp(:, 0, -1)=2*v_tmp(:, 1, -1) - v_tmp(:, 2, -1)
+        END IF
 
     END IF
 
@@ -304,6 +337,10 @@ PROGRAM ST_VENANT
     ! Coriolis
     ! ========
 
+    IF (l_meanflow) THEN
+      CALL ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES()
+    END IF
+
     IF (l_coriolis) THEN
         ! Define V_u, v in a u point
         ! Define U_v, u in a v point
@@ -318,10 +355,6 @@ PROGRAM ST_VENANT
                                 + v_tmp(2, 0:Ny - 1, -1) + v_tmp(1, 0:Ny - 1, -1) )
           V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, -1) + v_tmp(1, 1:Ny, -1)&
                                 + v_tmp(1, 0:Ny - 1, -1) + v_tmp(Nx, 0:Ny - 1, -1) )
-        ELSE IF (l_solidbc) THEN
-          V_u(0, 1:Ny) = 0
-          V_u(Nx, 1:Ny) = 0
-          ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
         END IF
         ! u_tmp(0:Nx, 1:Ny, )
         ! U_v(1:Nx, 0:Ny)
@@ -330,17 +363,15 @@ PROGRAM ST_VENANT
                               + u_tmp(0:Nx - 1, 2, -1) + u_tmp(0:Nx - 1, 1, -1) )
           U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Ny, -1) + u_tmp(1:Nx, 1, -1)&
                                 + u_tmp(0:Nx - 1, 1, -1) + u_tmp(0:Nx - 1, Ny, -1))
-        ELSE IF (l_solidbc) THEN
-          U_v(1:Nx, 0) = 0
-          U_v(1:Nx, Ny) = 0
         END IF
-
     END IF
+
 
     ! Height gradient
     ! ===============
     Xdu(1:Nx - 1, :) = Xdu(1:Nx - 1, :) - g/dx*(h_tmp(2:Nx, :, -1) - h_tmp(1:Nx - 1, :, -1))
     Xdv(:, 1:Ny - 1) = Xdv(:, 1:Ny - 1) - g/dy*(h_tmp(:, 2:Ny, -1) - h_tmp(:, 1:Ny - 1, -1))
+
 
     IF (l_up .and. l_periodic) THEN
         Xdu(0, :) = Xdu(0, :) - g/dx*(h_tmp(1, :, -1) - h_tmp(Nx, :, -1))
@@ -353,18 +384,28 @@ PROGRAM ST_VENANT
 
     ! Adding Coriolis
     ! ===============
-    IF (l_coriolis .and. l_betaplane) THEN
+    IF (l_coriolis) THEN
         ! Add Coriolis here
         Xdu(:, :) = Xdu(:, :) + f(:, 1:Ny)*V_u(:, :)
         Xdv(:, :) = Xdv(:, :) - f(1:Nx, :)*U_v(:, :)
-    ELSE IF (l_coriolis) THEN
-        Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
-        Xdv(:, :) = Xdv(:, :) - f0*U_v(:, :)
     END IF
 
     ! Convergence/divergence
     ! ======================
-    Xdh(:, :) = Xdh(:, :) - D*((u_tmp(1:Nx, :, -1) - u_tmp(0:Nx - 1, :, -1))/dx + (v_tmp(:, 1:Ny, -1) - v_tmp(:, 0:Ny - 1, -1))/dy)
+    IF (l_slopingbottom) THEN
+      DO ji = 1, Nx
+        Xdh(ji, :) = Xdh(ji, :) - (D + alpha*vy_t(:)) &
+                  & *( (u_tmp(ji, :, -1) - u_tmp(ji-1, :, -1))/dx &
+                  & + (v_tmp(ji, 1:Ny, -1) - v_tmp(ji, 0:Ny - 1, -1))/dy) &
+                  & + 0.5*alpha*(v_tmp(ji, 1:Ny, -1) + v_tmp(ji, 0:Ny - 1, -1))
+      END DO
+    ELSE IF (l_meanflow) THEN
+      CALL ADD_MEAN_FLOW_TO_SURFACE_ELEVATION()
+    ELSE
+      Xdh(:, :) = Xdh(:, :) - D &
+                & *((u_tmp(1:Nx, :, -1) - u_tmp(0:Nx - 1, :, -1))/dx &
+                & + (v_tmp(:, 1:Ny, -1) - v_tmp(:, 0:Ny - 1, -1))/dy)
+    END IF
 
     ! Time step
     ! =========
@@ -411,9 +452,6 @@ PROGRAM ST_VENANT
                                     + v_tmp(2, 0:Ny - 1, 0) + v_tmp(1, 0:Ny - 1, 0) )
               V_u(Nx, 1:Ny) = 0.25*( v_tmp(Nx, 1:Ny, 0) + v_tmp(1, 1:Ny, 0)&
                                     + v_tmp(1, 0:Ny - 1, 0) + v_tmp(Nx, 0:Ny - 1, 0) )
-            ELSE IF (l_solidbc) THEN
-              V_u(0, 1:Ny) = 0
-              V_u(Nx, 1:Ny) = 0
               ! CALL APPLY_CORIOLIS_EULER_PERIODIC()
             END IF
             IF (l_vp .and. l_periodic) THEN
@@ -421,11 +459,9 @@ PROGRAM ST_VENANT
                                   + u_tmp(0:Nx - 1, 2, 0) + u_tmp(0:Nx - 1, 1, 0) )
               U_v(1:Nx, Ny) = 0.25*( u_tmp(1:Nx, Ny, 0) + u_tmp(1:Nx, 1, 0)&
                                     + u_tmp(0:Nx - 1, 1, 0) + u_tmp(0:Nx - 1, Ny, 0))
-            ELSE IF (l_solidbc) THEN
-              U_v(1:Nx, 0) = 0
-              U_v(1:Nx, Ny) = 0
             END IF
         END IF
+
 
         ! Height gradient
         ! ===============
@@ -441,20 +477,36 @@ PROGRAM ST_VENANT
             Xdv(:, Ny) = Xdv(:, Ny) - g/dy*(h_tmp(:, 1, 0) - h_tmp(:, Ny, 0))
         END IF
 
+        IF (l_meanflow) THEN
+          CALL ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES()
+        END IF
+
         ! Adding Coriolis
         ! ===============
-        IF (l_coriolis .and. l_betaplane) THEN
+        IF (l_coriolis) THEN
             ! Add Coriolis here
             Xdu(:, :) = Xdu(:, :) + f(:, 1:Ny)*V_u(:, :)
             Xdv(:, :) = Xdv(:, :) - f(1:Nx, :)*U_v(:, :)
-        ELSE IF (l_coriolis) THEN
-            Xdu(:, :) = Xdu(:, :) + f0*V_u(:, :)
-            Xdv(:, :) = Xdv(:, :) - f0*U_v(:, :)
         END IF
 
         ! Convergence/divergence
         ! ===============
-        Xdh(:, :) = Xdh(:, :) - D*((u_tmp(1:Nx, :, 0) - u_tmp(0:Nx - 1, :, 0))/dx + (v_tmp(:, 1:Ny, 0) - v_tmp(:, 0:Ny - 1, 0))/dy)
+        ! Xdh(:, :) = Xdh(:, :) - D*((u_tmp(1:Nx, :, 0) - u_tmp(0:Nx - 1, :, 0))/dx + (v_tmp(:, 1:Ny, 0) - v_tmp(:, 0:Ny - 1, 0))/dy)
+
+        IF (l_slopingbottom) THEN
+          DO ji = 1, Nx
+            Xdh(ji, :) = Xdh(ji, :) - (D + alpha*vy_t(:)) &
+                      & *( (u_tmp(ji, :, 0) - u_tmp(ji-1, :, 0))/dx &
+                      & + (v_tmp(ji, 1:Ny, 0) - v_tmp(ji, 0:Ny - 1, 0))/dy) &
+                      & + 0.5*alpha*(v_tmp(ji, 1:Ny, 0) + v_tmp(ji, 0:Ny - 1, 0))
+          END DO
+        ELSE IF (l_meanflow) THEN
+          CALL ADD_MEAN_FLOW_TO_SURFACE_ELEVATION()
+        ELSE
+          Xdh(:, :) = Xdh(:, :) - D &
+                    & *((u_tmp(1:Nx, :, 0) - u_tmp(0:Nx - 1, :, 0))/dx &
+                    & + (v_tmp(:, 1:Ny, 0) - v_tmp(:, 0:Ny - 1, 0))/dy)
+        END IF
 
         ! Time step
         ! =========
@@ -687,5 +739,45 @@ CONTAINS
         CLOSE (11)
 
     END SUBROUTINE COMPUTE_ENERGY
+
+    SUBROUTINE ADD_MEAN_FLOW_TO_SURFACE_ELEVATION()
+    ! ================
+    ! Adding mean flow
+    ! ================
+      IF (jt == 0) THEN  ! if Euler forward
+          kk = -1
+      ELSE  ! if leap-frog
+          kk = 0
+      END IF
+
+      Xdh(2:Nx - 1, :) = Xdh(2:Nx - 1, :) - 0.5*u0/dx*(h_tmp(3:Nx, :, kk) - h_tmp(1:Nx - 2, :, kk))
+
+      IF (l_up .and. l_periodic) THEN
+          Xdh(1, :) = Xdh(1, :) - 0.5*u0/dx*(h_tmp(2, :, kk) - h_tmp(Nx, :, kk))
+          Xdh(Nx, :) = Xdh(Nx, :) - 0.5*u0/dx*(h_tmp(1, :, kk) - h_tmp(Nx - 1, :, kk))
+      END IF
+    END SUBROUTINE ADD_MEAN_FLOW_TO_SURFACE_ELEVATION
+
+    SUBROUTINE ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES()
+    ! ================
+    ! Adding mean flow
+    ! ================
+      IF (jt == 0) THEN  ! if Euler forward
+          kk = -1
+      ELSE  ! if leap-frog
+          kk = 0
+      END IF
+
+      Xdu(1:Nx - 1, :) = Xdu(1:Nx - 1, :) - 0.5*u0/dx*(u_tmp(2:Nx, :, kk) - u_tmp(0:Nx - 2, :, kk))
+      Xdv(2:Nx - 1, :) = Xdv(2:Nx - 1, :) - 0.5*u0/dx*(v_tmp(3:Nx, :, kk) - v_tmp(1:Nx - 2, :, kk))
+
+      IF (l_up .and. l_periodic) THEN
+          Xdu(0, :) = Xdu(0, :) - 0.5*u0/dx*(u_tmp(1, :, kk) - u_tmp(Nx - 1, :, kk))
+          Xdu(Nx, :) = Xdu(Nx, :) - 0.5*u0/dx*(u_tmp(1, :, kk) - u_tmp(Nx - 1, :, kk))
+
+          Xdv(1, :) = Xdv(1, :) - 0.5*u0/dx*(v_tmp(2, :, kk) - v_tmp(Nx, :, kk))
+          Xdv(Nx, :) = Xdv(Nx, :) - 0.5*u0/dx*(v_tmp(1, :, kk) - v_tmp(Nx - 1, :, kk))
+      END IF
+  END SUBROUTINE ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES
 
 END PROGRAM ST_VENANT

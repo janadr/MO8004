@@ -1,22 +1,27 @@
 &ngrid
   !!
-  Nx = 250              ! Number of x T points
-  Ny = 250              ! Number of y T points
-  Lx =  2.E7            ! Width of domain in x (m)  1.e6 = 1000 km
-  Ly =  2.E7    	      ! Width of domain in y (m)  1.e6 = 1000 km
-  Tm_d = 35.             ! Length of the run in days
+  Nx = 600              ! Number of x T points
+  Ny = 300              ! Number of y T points
+  Lx =  14.E6            ! Width of domain in x (m)  1.e6 = 1000 km
+  Ly =  7.E6    	      ! Width of domain in y (m)  1.e6 = 1000 km
+  Tm_d = 5.             ! Length of the run in days
   rfsave = 4         ! Frequency at which to save fields in hours.
   !!
 /
 
 &nphysics
   !!
-  D  = 1000.            ! Average depth (m)
-  l_reducedgravity = .TRUE.
+  D  = 4000.            ! Average depth (m)
+  l_reducedgravity = .FALSE.
   l_coriolis = .TRUE.  ! Introduce rotation
   l_betaplane = .TRUE. ! introduce beta plane
-  f0 = 1E-4            ! Coriolis constant
+  l_geostrophic = .TRUE.
+  l_meanflow = .TRUE.
+  l_slopingbottom = .FALSE.
+  f0 =  1E-4            ! Coriolis constant
   beta = 2.287E-11     ! beta plane constant
+  alpha = -9.3E-4
+  u0 = 0.
   !!
 /
 
@@ -40,16 +45,17 @@
 &nboundaries
   l_write_uv = .TRUE.   ! Should we output U and V? (H is always writen)
   !!
-  l_solidbc  = .TRUE.   ! Impose solid boundaries
+  l_solidbc  = .FALSE.   ! Impose solid boundaries
   !!
-  l_periodic = .FALSE.  ! Impose periodic boundaries
+  l_periodic = .TRUE.  ! Impose periodic boundaries
   l_up = .TRUE.        ! Periodic in E-W
   l_vp = .FALSE.        ! Periodic in N-S
   !!
-  l_spongebc = .FALSE.     ! Introduce open conditions
+  l_spongebc = .TRUE.     ! Introduce open conditions
   S  = 50                  ! Number of grid points in the sponge (if l_spongebc TRUE)
   btype = 1                ! 0 open BC everywhere, 1 open BC N-S, 2 open BC E-W
   l_write_domain = .TRUE.  ! If FALSE the netcdf will include the sponge
   l_alpha = .FALSE.         ! Save the sponge
   l_infinitecoast = .FALSE.
+  l_equatorial = .TRUE.
 /
