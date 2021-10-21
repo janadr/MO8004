@@ -1,2 +1,15 @@
 \section{Theory}
 \label{sec:theory}
+
+The dispersion relation for barotropic planetary waves can be derived from the linearized shallow water equations on a beta plane:
+	\begin{equation}
+		\omega = Uk -\frac{k\qty(\beta - \frac{f_0}{D_0}\alpha)}{k^2 + l^2 + \frac{1}{R^2}},
+		\label{eq:dispersion}
+	\end{equation}
+where $\omega$ is the angular frequency, $k$ and $l$ the zonal and meridional wavenumbers, respectively, $\beta $ the linear planetary vorticity slope, $ f_0 $ the planetary vorticity at a given latitude, $ D_0 $ the depth of the fluid, $ \alpha $ a topographic slope, and $R \equiv \qty(g D_0)^{1/2} f^{-1}_0$ the Rossby radius of deformation.
+
+The zonal phase and group velocities assuming flat topography ($\alpha = 0$) may be derived from eq. \ref{eq:dispersion}, yielding.
+	\begin{align}
+		c_x &= \frac{\omega}{k} = U - \frac{\beta}{k^2 + l^2 + \frac{1}{R^2}} \label{eq:phasespeed} \\
+		c_{gx} &= \partial_k \omega = U + \beta \frac{k^2 - l^2 - 1/R^2}{\qty(k^2 + l^2 + 1/R^2)^2}. \label{eq:groupvelocity}
+	\end{align}

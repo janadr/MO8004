@@ -1,2 +1,32 @@
 \section{Method}
 \label{sec:method}
+
+Building on a model first presented by \citet{lab1}, we have implemented a zonal mean flow and constant slope. We will use periodic boundaries in the east-west direction, and open boundaries with a sponge meridionally. The common model parameters for every run is listed in Table \ref{tab:parameters}. Additionally, the time-space grid is categorized in Table \ref{tab:grid}.
+	\begin{table}[htbp]
+		\begin{tabular}{ll}
+			\textbf{Parameter} & \textbf{Value} \\
+			$ g $ & $ 9.81 \, \text{m}\text{s}^{-2} $ \\
+			$ f_0 $ & $ 10^{-4} \, \text{s}^{-1}$ \\
+			$ \beta $ & $ 1.66 \cdot 10^{-11} \, \text{ (sm) }^{-1}  $ \\
+			$ D_0 $ & $ 4000 \, \text{m}$
+		\end{tabular}
+		\caption{Model physical parameters.}
+		\label{tab:parameters}
+	\end{table}
+
+	\begin{table}[htbp]
+		\begin{tabular}{ll}
+			\textbf{Parameter} & \textbf{Value} \\
+			$ Nx $ & $ 300 $\\
+			$ Ny $ & $ 300 $\\
+			$ L_x $ & $ 7 \cdot 10^6 \, \text{m} $\\
+			$ L_y $ & $ 7 \cdot 10^6 \, \text{m} $\\
+			runtime & $ 30 \, \text{days} $
+		\end{tabular}
+		\caption{Model grid parameters.}
+		\label{tab:grid}
+	\end{table}
+
+For estimating the group velocities, we constructed a semi-manual algorithm for identifying the two first maxima, and calculated the slope between them. For estimating the phase velocities, we zoomed in on the first ridge and calculated the maximum along the western "border" slightly after initial conditions. The phase velocity was then obtained by calculating the slope between this maximum and the initial maximum.
+
+Both methods are demonstrated on github. \footnote{https://github.com/ \\janadr/MO8004/tree/master/L3}

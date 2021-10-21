@@ -284,8 +284,8 @@ PROGRAM ST_VENANT
         h(Nx/2 + 1:Nx, :, 1) = -h0
 
     ELSE IF (l_gaussian_alt) THEN
-      Lw = min(Lx, Ly)/Lw
-      !Lw = sqrt(9.81*D)/f0*Lw
+      !Lw = min(Lx, Ly)/Lw
+      Lw = sqrt(9.81*D)/f0*Lw
       DO jj = 1, Ny
         DO ji = 1, Nx
           h(ji, jj, 1) = h0*exp(-((vx_t(ji) - 0.0*Lx)/Lw)**2 - (vy_t(jj)/Lw)**2)
@@ -584,22 +584,22 @@ PROGRAM ST_VENANT
         END IF
 
         CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, h(1 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
-                      'data/h_equatorial.nc', 'h')
+                      'data/h_U0.nc', 'h')
 
         IF (l_write_uv) THEN
             CALL WRITE_NC(vx_u(0 + sx:Nx - sx), vy_t(1 + sy:Ny - sy), vtime, u(0 + sx:Nx - sx, 1 + sy:Ny - sy, :), &
-                        'data/u_equatorial.nc', 'u')
+                        'data/u_U0.nc', 'u')
             CALL WRITE_NC(vx_t(1 + sx:Nx - sx), vy_v(0 + sy:Ny - sy), vtime, v(1 + sx:Nx - sx, 0 + sy:Ny - sy, :), &
-                        'data/v_equatorial.nc', 'v')
+                        'data/v_U0.nc', 'v')
         END IF
 
     ELSE
 
-        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_equatorial.nc', 'h')
+        CALL WRITE_NC(vx_t(1:Nx), vy_t(1:Ny), vtime, h(1:Nx, 1:Ny, :), 'data/h_U0.nc', 'h')
 
         IF (l_write_uv) THEN
-            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_equatorial.nc', 'u')
-            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_equatorial.nc', 'v')
+            CALL WRITE_NC(vx_u(0:Nx), vy_t(1:Ny), vtime, u(0:Nx, 1:Ny, :), 'data/u_U0.nc', 'u')
+            CALL WRITE_NC(vx_t(1:Nx), vy_v(0:Ny), vtime, v(1:Nx, 0:Ny, :), 'data/v_U0.nc', 'v')
         END IF
 
     END IF
@@ -739,7 +739,7 @@ CONTAINS
 
         et = ep + ek
 
-        OPEN (11, file='data/energy_equatorial.dat', status='replace')
+        OPEN (11, file='data/energy_U1.dat', status='replace')
         DO jt = 1, nb_save
             WRITE (11, *) jt, ep(jt), ek(jt), et(jt)
         END DO
@@ -748,43 +748,43 @@ CONTAINS
     END SUBROUTINE COMPUTE_ENERGY
 
     SUBROUTINE ADD_MEAN_FLOW_TO_SURFACE_ELEVATION()
-    ! ================
-    ! Adding mean flow
-    ! ================
-      IF (jt == 0) THEN  ! if Euler forward
-          kk = -1
-      ELSE  ! if leap-frog
-          kk = 0
-      END IF
+        ! ================
+        ! Adding mean flow
+        ! ================
+        IF (jt == 0) THEN  ! if Euler forward
+            kk = -1
+        ELSE  ! if leap-frog
+            kk = 0
+        END IF
 
-      Xdh(2:Nx - 1, :) = Xdh(2:Nx - 1, :) - 0.5*u0/dx*(h_tmp(3:Nx, :, kk) - h_tmp(1:Nx - 2, :, kk))
+        Xdh(2:Nx - 1, :) = Xdh(2:Nx - 1, :) - 0.5*u0/dx*(h_tmp(3:Nx, :, kk) - h_tmp(1:Nx - 2, :, kk))
 
-      IF (l_up .and. l_periodic) THEN
-          Xdh(1, :) = Xdh(1, :) - 0.5*u0/dx*(h_tmp(2, :, kk) - h_tmp(Nx, :, kk))
-          Xdh(Nx, :) = Xdh(Nx, :) - 0.5*u0/dx*(h_tmp(1, :, kk) - h_tmp(Nx - 1, :, kk))
-      END IF
+        IF (l_up .and. l_periodic) THEN
+            Xdh(1, :) = Xdh(1, :) - 0.5*u0/dx*(h_tmp(2, :, kk) - h_tmp(Nx, :, kk))
+            Xdh(Nx, :) = Xdh(Nx, :) - 0.5*u0/dx*(h_tmp(1, :, kk) - h_tmp(Nx - 1, :, kk))
+        END IF
     END SUBROUTINE ADD_MEAN_FLOW_TO_SURFACE_ELEVATION
 
     SUBROUTINE ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES()
-    ! ================
-    ! Adding mean flow
-    ! ================
-      IF (jt == 0) THEN  ! if Euler forward
-          kk = -1
-      ELSE  ! if leap-frog
-          kk = 0
-      END IF
+        ! ================
+        ! Adding mean flow
+        ! ================
+        IF (jt == 0) THEN  ! if Euler forward
+            kk = -1
+        ELSE  ! if leap-frog
+            kk = 0
+        END IF
 
-      Xdu(1:Nx - 1, :) = Xdu(1:Nx - 1, :) - 0.5*u0/dx*(u_tmp(2:Nx, :, kk) - u_tmp(0:Nx - 2, :, kk))
-      Xdv(2:Nx - 1, :) = Xdv(2:Nx - 1, :) - 0.5*u0/dx*(v_tmp(3:Nx, :, kk) - v_tmp(1:Nx - 2, :, kk))
+        Xdu(1:Nx - 1, :) = Xdu(1:Nx - 1, :) - 0.5*u0/dx*(u_tmp(2:Nx, :, kk) - u_tmp(0:Nx - 2, :, kk))
+        Xdv(2:Nx - 1, :) = Xdv(2:Nx - 1, :) - 0.5*u0/dx*(v_tmp(3:Nx, :, kk) - v_tmp(1:Nx - 2, :, kk))
 
-      IF (l_up .and. l_periodic) THEN
-          Xdu(0, :) = Xdu(0, :) - 0.5*u0/dx*(u_tmp(1, :, kk) - u_tmp(Nx - 1, :, kk))
-          Xdu(Nx, :) = Xdu(Nx, :) - 0.5*u0/dx*(u_tmp(1, :, kk) - u_tmp(Nx - 1, :, kk))
+        IF (l_up .and. l_periodic) THEN
+            Xdu(0, :) = Xdu(0, :) - 0.5*u0/dx*(u_tmp(1, :, kk) - u_tmp(Nx - 1, :, kk))
+            Xdu(Nx, :) = Xdu(Nx, :) - 0.5*u0/dx*(u_tmp(1, :, kk) - u_tmp(Nx - 1, :, kk))
 
-          Xdv(1, :) = Xdv(1, :) - 0.5*u0/dx*(v_tmp(2, :, kk) - v_tmp(Nx, :, kk))
-          Xdv(Nx, :) = Xdv(Nx, :) - 0.5*u0/dx*(v_tmp(1, :, kk) - v_tmp(Nx - 1, :, kk))
-      END IF
-  END SUBROUTINE ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES
+            Xdv(1, :) = Xdv(1, :) - 0.5*u0/dx*(v_tmp(2, :, kk) - v_tmp(Nx, :, kk))
+            Xdv(Nx, :) = Xdv(Nx, :) - 0.5*u0/dx*(v_tmp(1, :, kk) - v_tmp(Nx - 1, :, kk))
+        END IF
+      END SUBROUTINE ADD_MEAN_FLOW_TO_VELOCITY_DERIVATIVES
 
 END PROGRAM ST_VENANT

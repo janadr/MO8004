@@ -1,11 +1,11 @@
 &ngrid
   !!
-  Nx = 600              ! Number of x T points
+  Nx = 300              ! Number of x T points
   Ny = 300              ! Number of y T points
-  Lx =  14.E6            ! Width of domain in x (m)  1.e6 = 1000 km
-  Ly =  7.E6    	      ! Width of domain in y (m)  1.e6 = 1000 km
-  Tm_d = 5.             ! Length of the run in days
-  rfsave = 4         ! Frequency at which to save fields in hours.
+  Lx =  28.E6            ! Width of domain in x (m)  1.e6 = 1000 km
+  Ly =  14.E6    	      ! Width of domain in y (m)  1.e6 = 1000 km
+  Tm_d = 30.             ! Length of the run in days
+  rfsave = 6         ! Frequency at which to save fields in hours.
   !!
 /
 
@@ -19,9 +19,9 @@
   l_meanflow = .TRUE.
   l_slopingbottom = .FALSE.
   f0 =  1E-4            ! Coriolis constant
-  beta = 2.287E-11     ! beta plane constant
-  alpha = -9.3E-4
-  u0 = 10.
+  beta = 1.66E-11     ! beta plane constant
+  alpha = -6.64E-4
+  u0 = 0.
   !!
 /
 
@@ -31,7 +31,7 @@
   l_stepfunc = .FALSE.   ! Initial condition set as step function
   l_gaussian_alt = .TRUE.
   h0 = 1               ! Amplitude of the perturbation
-  Lw = 10.              ! Width of the gaussian L = Lw*width
+  Lw = 0.5              ! Width of the gaussian L = Lw*width
 /
 
 &nnumerics
@@ -52,7 +52,7 @@
   l_vp = .FALSE.        ! Periodic in N-S
   !!
   l_spongebc = .TRUE.     ! Introduce open conditions
-  S  = 50                  ! Number of grid points in the sponge (if l_spongebc TRUE)
+  S  = 100                  ! Number of grid points in the sponge (if l_spongebc TRUE)
   btype = 1                ! 0 open BC everywhere, 1 open BC N-S, 2 open BC E-W
   l_write_domain = .TRUE.  ! If FALSE the netcdf will include the sponge
   l_alpha = .FALSE.         ! Save the sponge
